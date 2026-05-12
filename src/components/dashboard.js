@@ -1,0 +1,221 @@
+import { renderRecommendations } from './recommendations.js';
+import { renderAvaliacoesSection } from './avaliacoes.js';
+import { renderCravingsTab } from './cravings.js';
+
+const motivationalMessages = [
+  { days: 1, message: "Parabéns! O primeiro dia é sempre o mais difícil. Continua!", type: "milestone" },
+  { days: 3, message: "3 dias sem vaping! Os teus pulmões já começam a sentir a diferença.", type: "achievement" },
+  { days: 7, message: "Uma semana completa! Estás a fazer um trabalho incrível.", type: "milestone" },
+  { days: 14, message: "2 semanas! A tua energia e capacidade respiratória estão a melhorar.", type: "achievement" },
+  { days: 30, message: "Um mês inteiro! És uma inspiração. O pior já passou.", type: "milestone" },
+  { days: 60, message: "2 meses! Os benefícios para a saúde são cada vez mais evidentes.", type: "achievement" },
+  { days: 90, message: "3 meses! Oficialmente fora da zona de risco. Parabéns!", type: "milestone" },
+  { days: 180, message: "6 meses! Transformaste a tua vida completamente.", type: "achievement" },
+  { days: 365, message: "1 ano completo! És um verdadeiro campeão da saúde!", type: "milestone" },
+];
+
+const healthBenefits = [
+  { days: 1, benefit: "Níveis de oxigénio no sangue voltam ao normal" },
+  { days: 3, benefit: "Capacidade de sentir sabores e cheiros melhora" },
+  { days: 7, benefit: "Respiração torna-se mais fácil" },
+  { days: 30, benefit: "Circulação sanguínea melhora significativamente" },
+  { days: 90, benefit: "Função pulmonar aumenta até 30%" },
+  { days: 365, benefit: "Risco de doenças cardíacas reduz drasticamente" },
+];
+
+export function renderDashboard(appState) {
+  if (!appState.userData) {
+    return renderSetupView(appState);
+  }
+
+  const stats = calculateStats(appState.userData);
+  const currentMessage = findMotivationalMessage(stats.daysFree);
+  const avaliacoes = appState.avaliacoes || [];
+  const mediaNotas = appState.mediaNotas || 0;
+  const totalAvaliacoes = appState.totalAvaliacoes || 0;
+
+  return `
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+          Olá, ${appState.userData.name || 'Campeão'}! 👋
+        </h1>
+        <p class="text-gray-600">Aqui está o teu progresso na jornada livre de vaping</p>
+      </div>
+
+      <div class="mb-6 border-b border-gray-200">
+        <div class="flex gap-2 overflow-x-auto">
+          <button id="tabDashboard" class="tabBtn active px-6 py-3 border-b-2 border-green-600 text-green-600 font-semibold" data-tab="dashboard">Dashboard</button>
+          <button id="tabCravings" class="tabBtn px-6 py-3 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="cravings">Desejos</button>
+        </div>
+      </div>
+
+      <div id="dashboardTab" class="tabContent">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          ${renderStatsCard('Dias Livres', stats.daysFree.toString(), 'dias consecutivos', 'from-green-500 to-emerald-500', `+${stats.daysFree}`)}
+          ${renderStatsCard('Dinheiro Poupado', `€${stats.moneySaved.toFixed(2)}`, 'total poupado', 'from-blue-500 to-cyan-500', `+€${(stats.moneySaved / stats.daysFree * 7).toFixed(2)}/semana`)}
+          ${renderStatsCard('Vapes Evitados', stats.vapesAvoided.toString(), 'unidades não consumidas', 'from-pink-500 to-rose-500', `~${Math.floor(stats.vapesAvoided / stats.daysFree)}/dia`)}
+        </div>
+
+        ${currentMessage ? `
+          <div class="bg-gradient-to-r ${getMotivationalColor(currentMessage.type)} rounded-2xl p-6 text-white mb-8 shadow-xl">
+            <div class="flex items-center mb-3">
+              <svg class="h-6 w-6 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              </svg>
+              <h3 class="text-lg font-semibold">
+                ${currentMessage.type === 'milestone' ? 'Marco Alcançado!' : 'Grande Conquista!'}
+              </h3>
+            </div>
+            <p class="text-lg">${currentMessage.message}</p>
+          </div>
+        ` : ''}
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+            Benefícios para a Saúde
+          </h3>
+
+          <div class="space-y-4">
+            ${healthBenefits.map((item) => `
+              <div class="flex items-center p-4 rounded-lg ${stats.daysFree >= item.days ? 'bg-green-50' : 'bg-gray-50'} hover:bg-gray-100 transition-all">
+                <div class="w-4 h-4 rounded-full mr-4 ${stats.daysFree >= item.days ? 'bg-green-500' : 'bg-gray-300'}"></div>
+                <div class="flex-1">
+                  <span class="font-medium ${stats.daysFree >= item.days ? 'text-green-700' : 'text-gray-600'}">
+                    Dia ${item.days}: ${item.benefit}
+                  </span>
+                  ${stats.daysFree >= item.days ? '<span class="ml-2 text-green-600 text-sm">✓ Alcançado</span>' : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        ${renderRecommendations()}
+
+        ${renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes, appState.user?.id)}
+      </div>
+
+      <div id="cravingsTab" class="tabContent hidden">
+        ${renderCravingsTab(appState)}
+      </div>
+
+      <div class="text-center mt-8">
+        <button id="setupBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-all">
+          Atualizar Dados
+        </button>
+      </div>
+
+      ${renderSetupModal(appState)}
+    </div>
+  `;
+}
+
+function renderSetupView(appState) {
+  return `
+    <div class="max-w-2xl mx-auto">
+      <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">Bem-vindo ao QuitVape!</h2>
+        <p class="text-gray-600 mb-8">Precisamos de algumas informações para começarmos a acompanhar o teu progresso.</p>
+        <button id="setupBtn" class="bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all">
+          Começar Agora
+        </button>
+      </div>
+      ${renderSetupModal(appState)}
+    </div>
+  `;
+}
+
+function renderSetupModal(appState) {
+  const defaultQuitDate = appState.userData?.quit_date || new Date().toISOString().split('T')[0];
+  const defaultName = appState.userData?.name || '';
+  const defaultWeeklyCost = appState.userData?.weekly_cost || 0;
+  const defaultVapesPerWeek = appState.userData?.vapes_per_week || 0;
+
+  return `
+    <div id="setupModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800">Configurar Perfil</h2>
+          <button id="closeModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+
+        <form id="setupForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+            <input type="text" name="name" value="${defaultName}" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Data que Paraste de Fazer Vaping</label>
+            <input type="date" name="quit_date" value="${defaultQuitDate}" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Custo Semanal (€)</label>
+            <input type="number" name="weekly_cost" value="${defaultWeeklyCost}" step="0.01" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Vapes por Semana</label>
+            <input type="number" name="vapes_per_week" value="${defaultVapesPerWeek}" step="1" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
+          </div>
+
+          <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all">
+            Guardar
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function renderStatsCard(title, value, subtitle, color, trend) {
+  return `
+    <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium mb-1">${title}</p>
+          <h3 class="text-3xl font-bold text-gray-800 mb-2">${value}</h3>
+          <p class="text-gray-500 text-xs">${subtitle}</p>
+        </div>
+        <div class="bg-gradient-to-br ${color} rounded-lg p-3 text-white">
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+        </div>
+      </div>
+      <div class="text-green-600 text-sm font-semibold mt-3">${trend}</div>
+    </div>
+  `;
+}
+
+function calculateStats(userData) {
+  if (!userData) return { daysFree: 0, moneySaved: 0, vapesAvoided: 0 };
+
+  const today = new Date();
+  const quitDate = new Date(userData.quit_date);
+  const diffTime = Math.abs(today.getTime() - quitDate.getTime());
+  const daysFree = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  const weeksElapsed = daysFree / 7;
+  const moneySaved = weeksElapsed * userData.weekly_cost;
+  const vapesAvoided = Math.floor(weeksElapsed * userData.vapes_per_week);
+
+  return { daysFree, moneySaved, vapesAvoided };
+}
+
+function findMotivationalMessage(daysFree) {
+  return motivationalMessages
+    .filter(msg => daysFree >= msg.days)
+    .pop() || null;
+}
+
+function getMotivationalColor(type) {
+  switch (type) {
+    case 'milestone': return 'from-yellow-500 to-orange-500';
+    case 'achievement': return 'from-green-500 to-blue-500';
+    default: return 'from-blue-500 to-teal-500';
+  }
+}
