@@ -33,6 +33,8 @@ export function renderDashboard(appState) {
   const avaliacoes = appState.avaliacoes || [];
   const mediaNotas = appState.mediaNotas || 0;
   const totalAvaliacoes = appState.totalAvaliacoes || 0;
+  const weeklySavings = stats.daysFree > 0 ? stats.moneySaved / stats.daysFree * 7 : 0;
+  const dailyVapesAvoided = stats.daysFree > 0 ? Math.floor(stats.vapesAvoided / stats.daysFree) : 0;
 
   return `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -53,8 +55,8 @@ export function renderDashboard(appState) {
       <div id="dashboardTab" class="tabContent">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           ${renderStatsCard('Dias Livres', stats.daysFree.toString(), 'dias consecutivos', 'from-green-500 to-emerald-500', `+${stats.daysFree}`)}
-          ${renderStatsCard('Dinheiro Poupado', `€${stats.moneySaved.toFixed(2)}`, 'total poupado', 'from-blue-500 to-cyan-500', `+€${(stats.moneySaved / stats.daysFree * 7).toFixed(2)}/semana`)}
-          ${renderStatsCard('Vapes Evitados', stats.vapesAvoided.toString(), 'unidades não consumidas', 'from-pink-500 to-rose-500', `~${Math.floor(stats.vapesAvoided / stats.daysFree)}/dia`)}
+          ${renderStatsCard('Dinheiro Poupado', `€${stats.moneySaved.toFixed(2)}`, 'total poupado', 'from-blue-500 to-cyan-500', `+€${weeklySavings.toFixed(2)}/semana`)}
+          ${renderStatsCard('Vapes Evitados', stats.vapesAvoided.toString(), 'unidades não consumidas', 'from-pink-500 to-rose-500', `~${dailyVapesAvoided}/dia`)}
         </div>
 
         ${currentMessage ? `
@@ -196,12 +198,19 @@ function calculateStats(userData) {
 
   const today = new Date();
   const quitDate = new Date(userData.quit_date);
-  const diffTime = Math.abs(today.getTime() - quitDate.getTime());
-  const daysFree = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const weeklyCost = Number(userData.weekly_cost) || 0;
+  const vapesPerWeek = Number(userData.vapes_per_week) || 0;
+
+  if (Number.isNaN(quitDate.getTime())) {
+    return { daysFree: 0, moneySaved: 0, vapesAvoided: 0 };
+  }
+
+  const diffTime = today.getTime() - quitDate.getTime();
+  const daysFree = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
   const weeksElapsed = daysFree / 7;
-  const moneySaved = weeksElapsed * userData.weekly_cost;
-  const vapesAvoided = Math.floor(weeksElapsed * userData.vapes_per_week);
+  const moneySaved = weeksElapsed * weeklyCost;
+  const vapesAvoided = Math.floor(weeksElapsed * vapesPerWeek);
 
   return { daysFree, moneySaved, vapesAvoided };
 }

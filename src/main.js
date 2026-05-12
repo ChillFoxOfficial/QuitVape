@@ -129,6 +129,7 @@ async function fetchAvaliacoes(userId) {
 
 function render() {
   const app = document.getElementById('app');
+  if (!app) return;
 
   if (!isSupabaseConfigured) {
     app.innerHTML = renderSupabaseSetupMessage();
@@ -227,17 +228,9 @@ function attachLoginHandlers() {
     });
   });
 
-  if (form) {
-    form.addEventListener('submit', handleLogin);
-  }
-
-  if (forgotForm) {
-    forgotForm.addEventListener('submit', handleForgotPassword);
-  }
-
-  if (resetForm) {
-    resetForm.addEventListener('submit', handleResetPassword);
-  }
+  if (form) form.addEventListener('submit', handleLogin);
+  if (forgotForm) forgotForm.addEventListener('submit', handleForgotPassword);
+  if (resetForm) resetForm.addEventListener('submit', handleResetPassword);
 }
 
 async function handleLogin(e) {
@@ -255,17 +248,9 @@ async function handleLogin(e) {
   if (errorDiv) errorDiv.style.display = 'none';
 
   try {
-    if (!email.includes('@')) {
-      throw new Error('Por favor, insira um email válido');
-    }
-
-    if (password.length < 6) {
-      throw new Error('A password deve ter pelo menos 6 caracteres');
-    }
-
-    if (!isLogin && name.length < 2) {
-      throw new Error('Por favor, insira o seu nome');
-    }
+    if (!email.includes('@')) throw new Error('Por favor, insira um email válido');
+    if (password.length < 6) throw new Error('A password deve ter pelo menos 6 caracteres');
+    if (!isLogin && name.length < 2) throw new Error('Por favor, insira o seu nome');
 
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -286,26 +271,13 @@ async function handleLogin(e) {
           weekly_cost: 0,
           vapes_per_week: 0,
         }]);
-
-        if (profileError) {
-          console.error('Erro ao criar perfil:', profileError);
-          throw new Error('Conta criada, mas houve um problema ao guardar o perfil. Por favor, tente novamente.');
-        }
+        if (profileError) throw profileError;
       }
     }
   } catch (error) {
-    const errorDiv = form.querySelector('[data-error]');
     if (errorDiv) {
       let displayMessage = error.message;
-
-      if (error.message.includes('Invalid login credentials')) {
-        displayMessage = 'Email ou password incorretos';
-      } else if (error.message.includes('User already registered')) {
-        displayMessage = 'Este email já está registado';
-      } else if (error.message.includes('Password')) {
-        displayMessage = 'A password deve ter pelo menos 6 caracteres';
-      }
-
+      if (error.message.includes('Invalid login credentials')) displayMessage = 'Email ou password incorretos';
       errorDiv.querySelector('p').textContent = displayMessage;
       errorDiv.style.display = 'block';
     }
@@ -327,27 +299,18 @@ async function handleForgotPassword(e) {
   if (successDiv) successDiv.style.display = 'none';
 
   try {
-    if (!email.includes('@')) {
-      throw new Error('Por favor, insira um email valido');
-    }
-
+    if (!email.includes('@')) throw new Error('Por favor, insira um email valido');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + window.location.pathname,
     });
-
     if (error) throw error;
-
     if (successDiv) {
       successDiv.querySelector('p').textContent = 'Se existir uma conta com este email, recebera um link para repor a palavra-passe.';
       successDiv.style.display = 'block';
     }
   } catch (error) {
     if (errorDiv) {
-      let displayMessage = error.message;
-      if (error.message.includes('rate limit')) {
-        displayMessage = 'Demasiados pedidos. Tente novamente mais tarde.';
-      }
-      errorDiv.querySelector('p').textContent = displayMessage;
+      errorDiv.querySelector('p').textContent = error.message;
       errorDiv.style.display = 'block';
     }
   } finally {
@@ -362,36 +325,15 @@ async function handleResetPassword(e) {
   const confirmPassword = form.confirmPassword.value;
   const submitBtn = form.querySelector('button[type="submit"]');
   const errorDiv = form.querySelector('[data-error]');
-  const successDiv = form.querySelector('[data-success]');
 
   submitBtn.disabled = true;
-  if (errorDiv) errorDiv.style.display = 'none';
-  if (successDiv) successDiv.style.display = 'none';
-
   try {
-    if (newPassword.length < 6) {
-      throw new Error('A palavra-passe deve ter pelo menos 6 caracteres');
-    }
-
-    if (newPassword !== confirmPassword) {
-      throw new Error('As palavras-passe nao coincidem');
-    }
-
+    if (newPassword.length < 6) throw new Error('A palavra-passe deve ter pelo menos 6 caracteres');
+    if (newPassword !== confirmPassword) throw new Error('As palavras-passe nao coincidem');
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-
     if (error) throw error;
-
-    if (successDiv) {
-      successDiv.querySelector('p').textContent = 'Palavra-passe atualizada com sucesso! A redirecionar para o login...';
-      successDiv.style.display = 'block';
-    }
-
-    setTimeout(() => {
-      appState.authMode = 'login';
-      appState.user = null;
-      window.location.hash = '';
-      render();
-    }, 2000);
+    appState.authMode = 'login';
+    render();
   } catch (error) {
     if (errorDiv) {
       errorDiv.querySelector('p').textContent = error.message;
@@ -406,21 +348,10 @@ function attachDashboardHandlers(appState) {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.error('Logout error:', error);
-        }
-        appState.user = null;
-        appState.userData = null;
-        appState.avaliacoes = [];
-        appState.mediaNotas = 0;
-        appState.totalAvaliacoes = 0;
-        appState.recentCravings = [];
-        render();
-      } catch (err) {
-        console.error('Logout failed:', err);
-      }
+      await supabase.auth.signOut();
+      appState.user = null;
+      appState.userData = null;
+      render();
     });
   }
 
@@ -428,26 +359,16 @@ function attachDashboardHandlers(appState) {
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const tabName = btn.dataset.tab;
-
       tabBtns.forEach(b => {
         b.classList.remove('border-green-600', 'text-green-600');
         b.classList.add('border-transparent', 'text-gray-600');
       });
       btn.classList.add('border-green-600', 'text-green-600');
-      btn.classList.remove('border-transparent', 'text-gray-600');
-
-      document.querySelectorAll('.tabContent').forEach(tab => {
-        tab.classList.add('hidden');
-      });
+      document.querySelectorAll('.tabContent').forEach(tab => tab.classList.add('hidden'));
       document.getElementById(`${tabName}Tab`).classList.remove('hidden');
-
-      if (tabName === 'cravings') {
-        attachCravingsHandlers(appState, appState.user.id);
-      }
+      if (tabName === 'cravings') attachCravingsHandlers(appState, appState.user.id);
     });
   });
-
-  attachCravingsHandlers(appState, appState.user.id);
 
   const setupBtn = document.getElementById('setupBtn');
   if (setupBtn) {
@@ -466,102 +387,34 @@ function attachDashboardHandlers(appState) {
   }
 
   const setupForm = document.getElementById('setupForm');
-  if (setupForm) {
-    setupForm.addEventListener('submit', handleSetupSubmit);
-  }
+  if (setupForm) setupForm.addEventListener('submit', handleSetupSubmit);
 
   const openAvaliacaoBtn = document.getElementById('openAvaliacaoBtn');
   if (openAvaliacaoBtn) {
     openAvaliacaoBtn.addEventListener('click', () => {
-      const modal = document.getElementById('avaliacaoModal');
-      if (modal) modal.style.display = 'flex';
+      document.getElementById('avaliacaoModal').style.display = 'flex';
     });
   }
 
   const closeAvaliacaoModal = document.getElementById('closeAvaliacaoModal');
   if (closeAvaliacaoModal) {
     closeAvaliacaoModal.addEventListener('click', () => {
-      const modal = document.getElementById('avaliacaoModal');
-      if (modal) modal.style.display = 'none';
+      document.getElementById('avaliacaoModal').style.display = 'none';
     });
   }
 
   const starBtns = document.querySelectorAll('.starBtn');
   const notaInput = document.querySelector('input[name="nota"]');
-  const notaLabel = document.getElementById('notaLabel');
-  const notaLabels = ['', 'Mau', 'Fraco', 'Razoável', 'Bom', 'Excelente'];
-
   starBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const value = parseInt(btn.dataset.value);
-      if (notaInput) notaInput.value = value;
-      if (notaLabel) notaLabel.textContent = notaLabels[value];
-
-      starBtns.forEach(b => {
-        const v = parseInt(b.dataset.value);
-        const svg = b.querySelector('svg');
-        if (v <= value) {
-          svg.classList.remove('text-gray-300');
-          svg.classList.add('text-yellow-400');
-        } else {
-          svg.classList.remove('text-yellow-400');
-          svg.classList.add('text-gray-300');
-        }
-      });
-    });
-
-    btn.addEventListener('mouseenter', () => {
-      const value = parseInt(btn.dataset.value);
-      starBtns.forEach(b => {
-        const v = parseInt(b.dataset.value);
-        const svg = b.querySelector('svg');
-        if (v <= value) {
-          svg.classList.remove('text-gray-300');
-          svg.classList.add('text-yellow-400');
-        } else {
-          svg.classList.remove('text-yellow-400');
-          svg.classList.add('text-gray-300');
-        }
-      });
+      const val = btn.dataset.value;
+      if (notaInput) notaInput.value = val;
+      starBtns.forEach(s => s.querySelector('svg').style.color = s.dataset.value <= val ? '#facc15' : '#d1d5db');
     });
   });
-
-  const starRating = document.getElementById('starRating');
-  if (starRating) {
-    starRating.addEventListener('mouseleave', () => {
-      const currentNota = parseInt(notaInput?.value || 0);
-      starBtns.forEach(b => {
-        const v = parseInt(b.dataset.value);
-        const svg = b.querySelector('svg');
-        if (v <= currentNota) {
-          svg.classList.remove('text-gray-300');
-          svg.classList.add('text-yellow-400');
-        } else {
-          svg.classList.remove('text-yellow-400');
-          svg.classList.add('text-gray-300');
-        }
-      });
-    });
-  }
 
   const avaliacaoForm = document.getElementById('avaliacaoForm');
-  if (avaliacaoForm) {
-    avaliacaoForm.addEventListener('submit', handleAvaliacaoSubmit);
-  }
-
-  document.querySelectorAll('.deleteAvaliacaoBtn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('Queres eliminar esta avaliação?')) return;
-      const id = btn.dataset.id;
-      const { error } = await supabase.from('avaliacoes').delete().eq('id', id);
-      if (error) {
-        console.error('Error deleting avaliacao:', error);
-      } else {
-        await fetchAvaliacoes(appState.user.id);
-        render();
-      }
-    });
-  });
+  if (avaliacaoForm) avaliacaoForm.addEventListener('submit', handleAvaliacaoSubmit);
 }
 
 async function handleSetupSubmit(e) {
@@ -569,21 +422,15 @@ async function handleSetupSubmit(e) {
   const form = e.target;
   const name = form.name.value.trim();
   const quit_date = form.quit_date.value;
-  const weekly_cost = Math.max(0, parseFloat(form.weekly_cost.value) || 0);
-  const vapes_per_week = Math.max(0, parseInt(form.vapes_per_week.value) || 0);
+  const weekly_cost = parseFloat(form.weekly_cost.value) || 0;
+  const vapes_per_week = parseInt(form.vapes_per_week.value) || 0;
 
   const submitBtn = form.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
 
   try {
-    if (!name || name.length < 2) {
-      throw new Error('Por favor, insira um nome válido');
-    }
-
-    if (!quit_date) {
-      throw new Error('Por favor, selecione uma data');
-    }
-
+    if (!name || !quit_date) throw new Error('Preencha todos os campos obrigatórios');
+    
     const { error } = await supabase
       .from('user_profiles')
       .update({ name, quit_date, weekly_cost, vapes_per_week })
@@ -591,13 +438,13 @@ async function handleSetupSubmit(e) {
 
     if (error) throw error;
 
-    await fetchUserData(appState.user.id);
-    const modal = document.getElementById('setupModal');
-    if (modal) modal.style.display = 'none';
+    // Atualização do estado local para evitar ecrã branco
+    appState.userData = { ...appState.userData, name, quit_date, weekly_cost, vapes_per_week };
+    
+    document.getElementById('setupModal').style.display = 'none';
     render();
   } catch (error) {
-    console.error('Error updating profile:', error);
-    alert('Erro ao atualizar perfil: ' + error.message);
+    alert(error.message);
   } finally {
     submitBtn.disabled = false;
   }
@@ -606,78 +453,29 @@ async function handleSetupSubmit(e) {
 async function handleAvaliacaoSubmit(e) {
   e.preventDefault();
   const form = e.target;
-  const alvoEmail = form.alvo_email.value.toLowerCase().trim();
+  const alvoEmail = form.alvo_email?.value?.toLowerCase()?.trim() || "";
   const nota = parseInt(form.nota.value);
   const comentario = form.comentario.value.trim();
 
-  const submitBtn = form.querySelector('button[type="submit"]');
-  const errorDiv = document.getElementById('avaliacaoError');
-
-  submitBtn.disabled = true;
-  if (errorDiv) errorDiv.style.display = 'none';
-
   try {
-    if (nota < 1 || nota > 5) {
-      throw new Error('Por favor, selecione uma nota de 1 a 5');
-    }
-
-    if (!alvoEmail.includes('@')) {
-      throw new Error('Por favor, insira um email válido');
-    }
-
-    const { data: profileData, error: profileError } = await supabase
+    if (!alvoEmail.includes('@')) throw new Error('Email inválido');
+    
+    const { data: profileData } = await supabase
       .from('user_profiles')
       .select('user_id')
       .ilike('name', alvoEmail.split('@')[0])
       .limit(1);
 
-    let alvoId = null;
+    const alvoId = profileData?.[0]?.user_id;
+    if (!alvoId || alvoId === appState.user.id) throw new Error('Utilizador inválido');
 
-    if (profileData && profileData.length > 0) {
-      alvoId = profileData[0].user_id;
-    } else {
-      const { data: authData, error: authError } = await supabase
-        .from('user_profiles')
-        .select('user_id')
-        .limit(100);
-
-      if (authError) throw new Error('Utilizador não encontrado');
-
-      const match = authData.find(p => p.user_id !== appState.user.id);
-      if (!match) throw new Error('Nenhum outro utilizador encontrado para avaliar');
-      alvoId = match.user_id;
-    }
-
-    if (alvoId === appState.user.id) {
-      throw new Error('Não podes avaliar a ti mesmo');
-    }
-
-    const { error } = await supabase.from('avaliacoes').insert([{
-      id_autor: appState.user.id,
-      id_alvo: alvoId,
-      nota,
-      comentario,
-    }]);
-
-    if (error) {
-      if (error.code === '23505') {
-        throw new Error('Já avaliaste este utilizador');
-      }
-      throw error;
-    }
-
+    await supabase.from('avaliacoes').insert([{ id_autor: appState.user.id, id_alvo: alvoId, nota, comentario }]);
+    
+    document.getElementById('avaliacaoModal').style.display = 'none';
     await fetchAvaliacoes(appState.user.id);
-    const modal = document.getElementById('avaliacaoModal');
-    if (modal) modal.style.display = 'none';
     render();
   } catch (error) {
-    const errorDiv = document.getElementById('avaliacaoError');
-    if (errorDiv) {
-      errorDiv.querySelector('p').textContent = error.message;
-      errorDiv.style.display = 'block';
-    }
-  } finally {
-    submitBtn.disabled = false;
+    alert(error.message);
   }
 }
 
