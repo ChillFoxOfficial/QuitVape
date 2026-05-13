@@ -48,7 +48,7 @@ export function renderWhackAVape() {
               class="gameCell bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 border-2 border-gray-300 dark:border-slate-700 rounded-lg transition-all duration-75 flex items-center justify-center text-2xl md:text-3xl cursor-pointer active:scale-95 min-h-[56px]"
               data-cell="${i}"
             >
-              <span class="vapeEmoji hidden">💨</span>
+              <span class="vapeEmoji hidden text-5xl md:text-6xl">💨</span>
             </button>
           `).join('')}
         </div>
@@ -207,7 +207,7 @@ export function initWhackAVape() {
       if (gameState.isRunning) {
         showVape();
       }
-    }, 800);
+    }, 1400);
 
     gameState.timerInterval = setInterval(() => {
       gameState.timeLeft--;
