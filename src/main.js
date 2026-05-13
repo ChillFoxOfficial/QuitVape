@@ -3,7 +3,7 @@ import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supab
 import { renderLoginPage } from './components/loginPage.js';
 import { renderDashboard } from './components/dashboard.js';
 import { attachCravingsHandlers, fetchRecentCravings } from './components/cravings.js';
-import { renderWhackAVapeModal, initWhackAVape } from './components/whackAVape.js';
+import { renderWhackAVape, initWhackAVape } from './components/whackAVape.js';
 
 const appState = {
   user: null,
@@ -156,8 +156,8 @@ function render() {
       ${renderNavbar()}
       <div class="pt-20 px-4 pb-6">
         ${renderDashboard(appState)}
+        ${renderWhackAVape()}
       </div>
-      ${renderWhackAVapeModal()}
     </div>
   `;
 

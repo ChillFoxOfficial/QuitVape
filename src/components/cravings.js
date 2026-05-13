@@ -138,7 +138,13 @@ export async function attachCravingsHandlers(appState, userId) {
       await fetchRecentCravings(appState, userId);
 
       setTimeout(() => {
-        window.showWhackAVapeModal();
+        const gameSection = document.getElementById('whackAVapeSection');
+        if (gameSection) {
+          gameSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (window.startWhackAVapeGame) {
+          window.startWhackAVapeGame();
+        }
       }, 2500);
     } catch (error) {
       if (errorDiv) {
