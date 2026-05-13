@@ -220,14 +220,14 @@ VITE_SUPABASE_ANON_KEY=your-anon-key</code></pre>
 function renderNavbar() {
   return `
     <nav class="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 shadow-md z-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-4">
-          <h1 class="text-2xl font-bold text-green-600 dark:text-green-300">QuitVape</h1>
-          <button id="themeToggleBtn" class="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 px-4 py-2 rounded-lg transition-all">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl font-bold text-green-600 dark:text-green-300">QuitVape</h1>
+          <button id="themeToggleBtn" class="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 px-3 py-1.5 rounded-full text-sm transition-all">
             Modo Escuro
           </button>
         </div>
-        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all">
+        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-full text-sm transition-all">
           Sair
         </button>
       </div>

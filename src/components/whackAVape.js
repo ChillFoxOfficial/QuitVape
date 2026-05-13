@@ -9,13 +9,13 @@ export function renderWhackAVape() {
         <div class="flex flex-col sm:flex-row gap-3">
           <button
             id="startGameBtn"
-            class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg transition-all"
+            class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-full text-sm transition-all"
           >
             Iniciar Jogo
           </button>
           <button
             id="resetGameBtn"
-            class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-4 py-2 rounded-lg transition-all"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-3 py-2 rounded-full text-sm transition-all"
           >
             Reiniciar
           </button>
