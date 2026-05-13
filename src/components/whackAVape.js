@@ -1,69 +1,64 @@
-export function renderWhackAVapeModal() {
+export function renderWhackAVape() {
   return `
-    <div id="whackAVapeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="bg-gradient-to-r from-green-600 to-green-700 p-6 flex items-center justify-between">
-          <div>
-            <h2 class="text-2xl font-bold text-white">Derrota o Desejo!</h2>
-            <p class="text-green-100">Jogo "Whack-a-Vape" - Distração Rápida</p>
+    <div id="whackAVapeGame" class="max-w-2xl mx-auto">
+      <div class="bg-gradient-to-r from-green-600 to-green-700 p-6 mb-6 rounded-lg">
+        <h2 class="text-2xl font-bold text-white">Derrota o Desejo!</h2>
+        <p class="text-green-100">Jogo "Whack-a-Vape" - Distração Rápida</p>
+      </div>
+
+      <div class="p-6 bg-white rounded-lg shadow-xl">
+        <div class="text-center mb-6">
+          <div id="gameStats" class="flex justify-around items-center mb-4">
+            <div class="bg-gray-50 p-4 rounded-lg flex-1 mx-2">
+              <p class="text-sm text-gray-600 font-semibold">Tempo Restante</p>
+              <p id="timerDisplay" class="text-4xl font-bold text-green-600">60</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg flex-1 mx-2">
+              <p class="text-sm text-gray-600 font-semibold">Pontos</p>
+              <p id="scoreDisplay" class="text-4xl font-bold text-blue-600">0</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg flex-1 mx-2">
+              <p class="text-sm text-gray-600 font-semibold">Melhor Pontuação</p>
+              <p id="highScoreDisplay" class="text-4xl font-bold text-purple-600">0</p>
+            </div>
           </div>
-          <button id="closeWhackModal" class="text-white hover:text-green-100 text-3xl font-bold">×</button>
+
+          <div id="gameProgress" class="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div id="progressBar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+          </div>
         </div>
 
-        <div class="p-6">
-          <div class="text-center mb-6">
-            <div id="gameStats" class="flex justify-around items-center mb-4">
-              <div class="bg-gray-50 p-4 rounded-lg flex-1 mx-2">
-                <p class="text-sm text-gray-600 font-semibold">Tempo Restante</p>
-                <p id="timerDisplay" class="text-4xl font-bold text-green-600">60</p>
-              </div>
-              <div class="bg-gray-50 p-4 rounded-lg flex-1 mx-2">
-                <p class="text-sm text-gray-600 font-semibold">Pontos</p>
-                <p id="scoreDisplay" class="text-4xl font-bold text-blue-600">0</p>
-              </div>
-              <div class="bg-gray-50 p-4 rounded-lg flex-1 mx-2">
-                <p class="text-sm text-gray-600 font-semibold">Melhor Pontuação</p>
-                <p id="highScoreDisplay" class="text-4xl font-bold text-purple-600">0</p>
-              </div>
-            </div>
-
-            <div id="gameProgress" class="w-full bg-gray-200 rounded-full h-2 mb-4">
-              <div id="progressBar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
-            </div>
+        <div id="gameContainer" class="mb-6">
+          <div id="gameBoard" class="grid grid-cols-3 gap-3 aspect-square bg-gradient-to-br from-gray-100 to-gray-50 p-4 rounded-lg border-2 border-gray-300">
+            ${Array(9).fill(0).map((_, i) => `
+              <button
+                class="gameCell bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-lg transition-all duration-75 flex items-center justify-center text-4xl cursor-pointer active:scale-95"
+                data-cell="${i}"
+              >
+                <span class="vapeEmoji hidden">💨</span>
+              </button>
+            `).join('')}
           </div>
+        </div>
 
-          <div id="gameContainer" class="mb-6">
-            <div id="gameBoard" class="grid grid-cols-3 gap-3 aspect-square bg-gradient-to-br from-gray-100 to-gray-50 p-4 rounded-lg border-2 border-gray-300">
-              ${Array(9).fill(0).map((_, i) => `
-                <button
-                  class="gameCell bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-lg transition-all duration-75 flex items-center justify-center text-4xl cursor-pointer active:scale-95"
-                  data-cell="${i}"
-                >
-                  <span class="vapeEmoji hidden">💨</span>
-                </button>
-              `).join('')}
-            </div>
-          </div>
+        <div id="gameMessage" class="hidden text-center p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+          <p id="messageText" class="text-xl font-bold text-green-700"></p>
+          <p id="messageFinal" class="text-gray-600 mt-2"></p>
+        </div>
 
-          <div id="gameMessage" class="hidden text-center p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-            <p id="messageText" class="text-xl font-bold text-green-700"></p>
-            <p id="messageFinal" class="text-gray-600 mt-2"></p>
-          </div>
-
-          <div class="flex gap-4">
-            <button
-              id="startGameBtn"
-              class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-all"
-            >
-              Iniciar Jogo
-            </button>
-            <button
-              id="resetGameBtn"
-              class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition-all"
-            >
-              Reiniciar
-            </button>
-          </div>
+        <div class="flex gap-4">
+          <button
+            id="startGameBtn"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-all"
+          >
+            Iniciar Jogo
+          </button>
+          <button
+            id="resetGameBtn"
+            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition-all"
+          >
+            Reiniciar
+          </button>
         </div>
       </div>
     </div>
@@ -80,10 +75,8 @@ export function initWhackAVape() {
     timerInterval: null,
   };
 
-  const modal = document.getElementById('whackAVapeModal');
   const startBtn = document.getElementById('startGameBtn');
   const resetBtn = document.getElementById('resetGameBtn');
-  const closeBtn = document.getElementById('closeWhackModal');
   const gameBoard = document.getElementById('gameBoard');
   const gameMessage = document.getElementById('gameMessage');
   const messageText = document.getElementById('messageText');
@@ -188,12 +181,6 @@ export function initWhackAVape() {
     startBtn.textContent = 'Iniciar Jogo';
   });
 
-  closeBtn.addEventListener('click', () => {
-    gameState.isRunning = false;
-    if (gameState.timerInterval) clearInterval(gameState.timerInterval);
-    modal.classList.add('hidden');
-  });
-
   cells.forEach(cell => {
     cell.addEventListener('click', () => {
       if (!gameState.isRunning) return;
@@ -208,8 +195,4 @@ export function initWhackAVape() {
       }
     });
   });
-
-  window.showWhackAVapeModal = () => {
-    modal.classList.remove('hidden');
-  };
 }

@@ -477,6 +477,6 @@ async function handleAvaliacaoSubmit(e) {
   } catch (error) {
     alert(error.message);
   }
-}
+}4
 
 initApp();
