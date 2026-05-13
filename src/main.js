@@ -31,7 +31,7 @@ function getAuthErrorMessage(error, fallbackMessage) {
   }
 
   if (message.includes('Error sending confirmation email') || message === '{}') {
-    return 'O pedido foi aceite, mas o email não foi entregue. Confirma a configuração SMTP/Postmark no Supabase.';
+    return 'Não foi possível enviar o email. Tenta novamente mais tarde.';
   }
 
   return message;
@@ -320,7 +320,7 @@ async function handleLogin(e) {
       if (error) throw error;
 
       if (successDiv) {
-        successDiv.querySelector('p').textContent = 'Pedido de confirmação criado. Se o email não chegar, confirma o SMTP/Postmark no Supabase e a pasta de spam.';
+        successDiv.querySelector('p').textContent = 'Consulta a tua caixa de entrada e a pasta de spam.';
         successDiv.style.display = 'block';
       }
       appState.authMode = 'login';
@@ -356,7 +356,7 @@ async function handleForgotPassword(e) {
     });
     if (error) throw error;
     if (successDiv) {
-      successDiv.querySelector('p').textContent = 'Pedido de recuperação criado. Se existir uma conta, o email deve chegar pelo SMTP configurado no Supabase.';
+      successDiv.querySelector('p').textContent = 'Consulta a tua caixa de entrada e a pasta de spam.';
       successDiv.style.display = 'block';
     }
   } catch (error) {
