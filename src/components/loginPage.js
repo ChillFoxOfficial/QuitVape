@@ -252,6 +252,9 @@ export function renderLoginPage(appState) {
             <div data-error style="display: none;" class="bg-red-50 border border-red-200 rounded-lg p-3">
               <p class="text-red-600 text-sm"></p>
             </div>
+            <div data-success style="display: none;" class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <p class="text-emerald-700 text-sm"></p>
+            </div>
 
             <button
               type="submit"

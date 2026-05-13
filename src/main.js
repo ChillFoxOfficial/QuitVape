@@ -42,12 +42,13 @@ async function initApp() {
 
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   const isRecovery = hashParams.get('type') === 'recovery';
+  const isSignup = hashParams.get('type') === 'signup';
 
-  if (isRecovery) {
+  if (isRecovery || isSignup) {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       appState.user = session.user;
-      appState.authMode = 'reset';
+      appState.authMode = isRecovery ? 'reset' : 'login';
       appState.loading = false;
       render();
       return;
@@ -105,6 +106,23 @@ async function fetchUserData(userId) {
       console.error('Error fetching user data:', error);
     } else if (data) {
       appState.userData = data;
+    } else {
+      const user = supabase.auth.getUser ? (await supabase.auth.getUser()).data.user : null;
+      const defaultName = user?.user_metadata?.name || '';
+      const { error: insertError, data: insertedData } = await supabase.from('user_profiles').insert([{
+        user_id: userId,
+        name: defaultName,
+        quit_date: new Date().toISOString().split('T')[0],
+        weekly_cost: 0,
+        vapes_per_week: 0,
+        setup_completed: false,
+      }]).select().maybeSingle();
+
+      if (insertError) {
+        console.error('Error creating default user profile:', insertError);
+      } else if (insertedData) {
+        appState.userData = insertedData;
+      }
     }
   } catch (error) {
     console.error('Error:', error);
@@ -257,9 +275,11 @@ async function handleLogin(e) {
 
   const submitBtn = form.querySelector('button[type="submit"]');
   const errorDiv = form.querySelector('[data-error]');
+  const successDiv = form.querySelector('[data-success]');
 
   submitBtn.disabled = true;
   if (errorDiv) errorDiv.style.display = 'none';
+  if (successDiv) successDiv.style.display = 'none';
 
   try {
     if (!email.includes('@')) throw new Error('Por favor, insira um email válido');
@@ -273,26 +293,37 @@ async function handleLogin(e) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name } },
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname,
+          data: { name },
+        },
       });
       if (error) throw error;
 
-      if (data.user) {
-        const { error: profileError } = await supabase.from('user_profiles').insert([{
-          user_id: data.user.id,
-          name,
-          quit_date: new Date().toISOString().split('T')[0],
-          weekly_cost: 0,
-          vapes_per_week: 0,
-          setup_completed: false,
-        }]);
-        if (profileError) throw profileError;
+      if (successDiv) {
+        successDiv.querySelector('p').textContent = 'Um email de confirmação foi enviado. Verifica a tua caixa de entrada antes de iniciar sessão.';
+        successDiv.style.display = 'block';
       }
+      appState.authMode = 'login';
     }
   } catch (error) {
     if (errorDiv) {
-      let displayMessage = error.message;
-      if (error.message.includes('Invalid login credentials')) displayMessage = 'Email ou password incorretos';
+      let displayMessage;
+      if (error && typeof error === 'object' && 'message' in error && error.message) {
+        displayMessage = error.message;
+      } else if (typeof error === 'string') {
+        displayMessage = error;
+      } else {
+        displayMessage = JSON.stringify(error) || 'Ocorreu um erro desconhecido.';
+      }
+
+      if (displayMessage.includes('Invalid login credentials')) {
+        displayMessage = 'Email ou password incorretos';
+      }
+      if (displayMessage === '{}') {
+        displayMessage = 'Falha no envio do email de confirmação. Tenta novamente mais tarde.';
+      }
+
       errorDiv.querySelector('p').textContent = displayMessage;
       errorDiv.style.display = 'block';
     }
@@ -363,10 +394,18 @@ function attachDashboardHandlers(appState) {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      appState.user = null;
-      appState.userData = null;
-      render();
+      logoutBtn.disabled = true;
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        appState.user = null;
+        appState.userData = null;
+        logoutBtn.disabled = false;
+        render();
+      }
     });
   }
 
