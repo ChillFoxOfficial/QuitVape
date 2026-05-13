@@ -18,6 +18,24 @@ const appState = {
 
 const themeStorageKey = 'quitvapeTheme';
 
+function getAuthRedirectUrl() {
+  return window.location.origin + window.location.pathname;
+}
+
+function getAuthErrorMessage(error, fallbackMessage) {
+  const message = error?.message || fallbackMessage;
+
+  if (message.includes('Invalid login credentials')) {
+    return 'Email ou password incorretos';
+  }
+
+  if (message.includes('Error sending confirmation email') || message === '{}') {
+    return 'O pedido foi aceite, mas o email não foi entregue. Confirma a configuração SMTP/Postmark no Supabase.';
+  }
+
+  return message;
+}
+
 function setTheme(theme) {
   document.documentElement.classList.toggle('dark', theme === 'dark');
   localStorage.setItem(themeStorageKey, theme);
@@ -294,35 +312,21 @@ async function handleLogin(e) {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
+          emailRedirectTo: getAuthRedirectUrl(),
           data: { name },
         },
       });
       if (error) throw error;
 
       if (successDiv) {
-        successDiv.querySelector('p').textContent = 'Um email de confirmação foi enviado. Verifica a tua caixa de entrada antes de iniciar sessão.';
+        successDiv.querySelector('p').textContent = 'Pedido de confirmação criado. Se o email não chegar, confirma o SMTP/Postmark no Supabase e a pasta de spam.';
         successDiv.style.display = 'block';
       }
       appState.authMode = 'login';
     }
   } catch (error) {
     if (errorDiv) {
-      let displayMessage;
-      if (error && typeof error === 'object' && 'message' in error && error.message) {
-        displayMessage = error.message;
-      } else if (typeof error === 'string') {
-        displayMessage = error;
-      } else {
-        displayMessage = JSON.stringify(error) || 'Ocorreu um erro desconhecido.';
-      }
-
-      if (displayMessage.includes('Invalid login credentials')) {
-        displayMessage = 'Email ou password incorretos';
-      }
-      if (displayMessage === '{}') {
-        displayMessage = 'Falha no envio do email de confirmação. Tenta novamente mais tarde.';
-      }
+      const displayMessage = getAuthErrorMessage(error, 'Ocorreu um erro desconhecido.');
 
       errorDiv.querySelector('p').textContent = displayMessage;
       errorDiv.style.display = 'block';
@@ -347,16 +351,16 @@ async function handleForgotPassword(e) {
   try {
     if (!email.includes('@')) throw new Error('Por favor, insira um email valido');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname,
+      redirectTo: getAuthRedirectUrl(),
     });
     if (error) throw error;
     if (successDiv) {
-      successDiv.querySelector('p').textContent = 'Se existir uma conta com este email, recebera um link para repor a palavra-passe.';
+      successDiv.querySelector('p').textContent = 'Pedido de recuperação criado. Se existir uma conta, o email deve chegar pelo SMTP configurado no Supabase.';
       successDiv.style.display = 'block';
     }
   } catch (error) {
     if (errorDiv) {
-      errorDiv.querySelector('p').textContent = error.message;
+      errorDiv.querySelector('p').textContent = getAuthErrorMessage(error, 'Falha ao pedir recuperação de palavra-passe.');
       errorDiv.style.display = 'block';
     }
   } finally {
