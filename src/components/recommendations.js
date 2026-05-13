@@ -31,15 +31,15 @@ export function renderRecommendations() {
     <div class="mb-8">
       <h2 class="text-2xl font-bold text-gray-800 mb-6">Recomendações de Especialistas</h2>
 
-      <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-8 mb-8">
         <div class="flex flex-col items-center">
           <img
             src="/anasua_kundu.png"
             alt="Dra. Anasua Kundu"
-            class="w-40 h-40 rounded-full object-cover border-4 border-blue-100 mb-4"
+            class="w-40 h-40 rounded-full object-cover border-4 border-blue-100 dark:border-slate-700 mb-4"
           />
-          <h3 class="text-xl font-bold text-gray-800">Dra. Anasua Kundu</h3>
-          <p class="text-sm text-blue-600 font-medium">Especialista em Saúde Respiratória</p>
+          <h3 class="text-xl font-bold text-gray-800 dark:text-slate-100">Dra. Anasua Kundu</h3>
+          <p class="text-sm text-blue-600 dark:text-blue-300 font-medium">Especialista em Saúde Respiratória</p>
         </div>
       </div>
 
@@ -52,11 +52,11 @@ export function renderRecommendations() {
 
 function renderRecommendationCard(rec) {
   return `
-    <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
-      <p class="text-gray-700 mb-4 leading-relaxed">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
+      <p class="text-gray-700 dark:text-slate-300 mb-4 leading-relaxed">
         "${rec.comment}"
       </p>
-      <a href="${rec.source}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-500 hover:text-blue-700 hover:underline inline-flex items-center gap-1">
+      <a href="${rec.source}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-500 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-400 hover:underline inline-flex items-center gap-1">
         <span>Ver artigo científico</span>
         <span>→</span>
       </a>
