@@ -16,7 +16,24 @@ const appState = {
   recentCravings: [],
 };
 
+const themeStorageKey = 'quitvapeTheme';
+
+function setTheme(theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  localStorage.setItem(themeStorageKey, theme);
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if (themeBtn) {
+    themeBtn.textContent = theme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+  }
+}
+
+function loadTheme() {
+  const savedTheme = localStorage.getItem(themeStorageKey);
+  setTheme(savedTheme === 'dark' ? 'dark' : 'light');
+}
+
 async function initApp() {
+  loadTheme();
   if (!isSupabaseConfigured) {
     appState.loading = false;
     render();
@@ -152,7 +169,7 @@ function render() {
   }
 
   app.innerHTML = `
-    <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
       ${renderNavbar()}
       <div class="pt-20 px-4 pb-6">
         ${renderDashboard(appState)}
@@ -202,10 +219,13 @@ VITE_SUPABASE_ANON_KEY=your-anon-key</code></pre>
 
 function renderNavbar() {
   return `
-    <nav class="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <div class="flex items-center">
-          <h1 class="text-2xl font-bold text-green-600">QuitVape</h1>
+    <nav class="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 shadow-md z-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-4">
+          <h1 class="text-2xl font-bold text-green-600 dark:text-green-300">QuitVape</h1>
+          <button id="themeToggleBtn" class="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 px-4 py-2 rounded-lg transition-all">
+            Modo Escuro
+          </button>
         </div>
         <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all">
           Sair
@@ -369,6 +389,15 @@ function attachDashboardHandlers(appState) {
       if (tabName === 'cravings') attachCravingsHandlers(appState, appState.user.id);
     });
   });
+
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if (themeBtn) {
+    themeBtn.textContent = document.documentElement.classList.contains('dark') ? 'Modo Claro' : 'Modo Escuro';
+    themeBtn.addEventListener('click', () => {
+      const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+      setTheme(nextTheme);
+    });
+  }
 
   const setupBtn = document.getElementById('setupBtn');
   if (setupBtn) {

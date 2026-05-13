@@ -1,38 +1,38 @@
 export function renderWhackAVape() {
   return `
-    <section id="whackAVapeSection" class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+    <section id="whackAVapeSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-5 mb-8">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <h2 class="text-2xl font-bold text-gray-800">Whack-a-Vape</h2>
-          <p class="text-gray-600">Clique no emoji de vape antes que o tempo acabe.</p>
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Whack-a-Vape</h2>
+          <p class="text-gray-600 dark:text-slate-300">Clique no emoji de vape antes que o tempo acabe.</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
           <button
             id="startGameBtn"
-            class="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-3 rounded-lg transition-all"
+            class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg transition-all"
           >
             Iniciar Jogo
           </button>
           <button
             id="resetGameBtn"
-            class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-5 py-3 rounded-lg transition-all"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-4 py-2 rounded-lg transition-all"
           >
             Reiniciar
           </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
-          <p class="text-sm text-gray-600 font-semibold">Tempo Restante</p>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-sm">
+          <p class="text-sm text-gray-600 dark:text-slate-300 font-semibold">Tempo Restante</p>
           <p id="timerDisplay" class="text-4xl font-bold text-green-600">60</p>
         </div>
-        <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
-          <p class="text-sm text-gray-600 font-semibold">Pontos</p>
+        <div class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-sm">
+          <p class="text-sm text-gray-600 dark:text-slate-300 font-semibold">Pontos</p>
           <p id="scoreDisplay" class="text-4xl font-bold text-blue-600">0</p>
         </div>
-        <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
-          <p class="text-sm text-gray-600 font-semibold">Melhor Pontuação</p>
+        <div class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-sm">
+          <p class="text-sm text-gray-600 dark:text-slate-300 font-semibold">Melhor Pontuação</p>
           <p id="highScoreDisplay" class="text-4xl font-bold text-purple-600">0</p>
         </div>
       </div>
@@ -42,10 +42,10 @@ export function renderWhackAVape() {
       </div>
 
       <div id="gameContainer" class="mb-6">
-        <div id="gameBoard" class="grid grid-cols-3 gap-3 aspect-square bg-gradient-to-br from-gray-100 to-gray-50 p-4 rounded-lg border-2 border-gray-300">
+        <div id="gameBoard" class="grid grid-cols-3 gap-2 aspect-square bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-800 dark:to-slate-700 p-3 rounded-lg border-2 border-gray-300 dark:border-slate-700">
           ${Array(9).fill(0).map((_, i) => `
             <button
-              class="gameCell bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-lg transition-all duration-75 flex items-center justify-center text-4xl cursor-pointer active:scale-95"
+              class="gameCell bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 border-2 border-gray-300 dark:border-slate-700 rounded-lg transition-all duration-75 flex items-center justify-center text-3xl md:text-4xl cursor-pointer active:scale-95 min-h-[66px]"
               data-cell="${i}"
             >
               <span class="vapeEmoji hidden">💨</span>
@@ -54,9 +54,9 @@ export function renderWhackAVape() {
         </div>
       </div>
 
-      <div id="gameMessage" class="hidden text-center p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-        <p id="messageText" class="text-xl font-bold text-green-700"></p>
-        <p id="messageFinal" class="text-gray-600 mt-2"></p>
+      <div id="gameMessage" class="hidden text-center p-4 bg-green-50 dark:bg-emerald-900 border border-green-200 dark:border-emerald-700 rounded-lg mb-4">
+        <p id="messageText" class="text-xl font-bold text-green-700 dark:text-emerald-100"></p>
+        <p id="messageFinal" class="text-gray-600 dark:text-emerald-200 mt-2"></p>
       </div>
     </section>
   `;
