@@ -51,6 +51,7 @@ export function renderDashboard(appState) {
           <button id="tabDashboard" class="tabBtn active px-5 py-2 border-b-2 border-green-600 text-green-600 font-semibold" data-tab="dashboard">Dashboard</button>
           <button id="tabCravings" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="cravings">Desejos</button>
           <button id="tabGame" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="game">Jogo</button>
+          <button id="tabAbout" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="about">Sobre</button>
         </div>
       </div>
 
@@ -109,6 +110,24 @@ export function renderDashboard(appState) {
 
       <div id="gameTab" class="tabContent hidden">
         ${renderWhackAVape()}
+      </div>
+
+      <div id="aboutTab" class="tabContent hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-8">
+          <div class="flex items-center justify-center mb-6">
+            <div class="h-12 w-12 text-green-600 mr-3 flex items-center justify-center">
+              <svg class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-2xl font-bold text-gray-800 dark:text-slate-100">QuitVape</h3>
+              <p class="text-sm text-gray-600 dark:text-slate-300">A nossa missão</p>
+            </div>
+          </div>
+          <p class="text-gray-700 dark:text-slate-200 leading-7">A QuitVape é uma empresa que se baseia num projeto criado para ajudar as pessoas a pararem de fumar, com foco especial em quem quer deixar o vape ou vaping. O nosso objetivo é oferecer ferramentas, motivação e apoio para que cada utilizador tenha sucesso na sua jornada para uma vida mais saudável.</p>
+          <p class="mt-4 text-gray-600 dark:text-slate-400">Nascemos da crença de que pequenas mudanças diárias fazem uma grande diferença na saúde e no bem-estar. Estamos aqui para te acompanhar em cada passo dessa transformação.</p>
+        </div>
       </div>
 
       <div class="text-center mt-8">
