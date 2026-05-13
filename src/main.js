@@ -247,6 +247,14 @@ function attachLoginHandlers() {
   const form = document.getElementById('authForm');
   const forgotForm = document.getElementById('forgotForm');
   const resetForm = document.getElementById('resetPasswordForm');
+  const languageSelect = document.getElementById('loginLanguageSelect');
+
+  if (languageSelect) {
+    languageSelect.addEventListener('change', (e) => {
+      setLanguage(e.target.value);
+      render();
+    });
+  }
 
   toggleBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
