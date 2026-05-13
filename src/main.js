@@ -17,9 +17,10 @@ const appState = {
 };
 
 const themeStorageKey = 'quitvapeTheme';
+const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || 'https://quit-vape-seven.vercel.app/';
 
 function getAuthRedirectUrl() {
-  return window.location.origin + window.location.pathname;
+  return authRedirectUrl;
 }
 
 function getAuthErrorMessage(error, fallbackMessage) {
