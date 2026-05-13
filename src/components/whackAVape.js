@@ -6,16 +6,16 @@ export function renderWhackAVape() {
           <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Whack-a-Vape</h2>
           <p class="text-gray-600 dark:text-slate-300">Clique no emoji de vape antes que o tempo acabe.</p>
         </div>
-        <div class="flex flex-col sm:flex-row gap-3">
+        <div class="flex flex-col sm:flex-row gap-2">
           <button
             id="startGameBtn"
-            class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-full text-sm transition-all"
+            class="bg-green-600 hover:bg-green-700 text-white font-bold px-2 py-1 rounded-full text-xs transition-all"
           >
-            Iniciar Jogo
+            Iniciar
           </button>
           <button
             id="resetGameBtn"
-            class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-3 py-2 rounded-full text-sm transition-all"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-2 py-1 rounded-full text-xs transition-all"
           >
             Reiniciar
           </button>
@@ -42,10 +42,10 @@ export function renderWhackAVape() {
       </div>
 
       <div id="gameContainer" class="mb-6">
-        <div id="gameBoard" class="grid grid-cols-3 gap-2 aspect-square bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-800 dark:to-slate-700 p-3 rounded-lg border-2 border-gray-300 dark:border-slate-700">
+        <div id="gameBoard" class="grid grid-cols-3 gap-1 aspect-square bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-800 dark:to-slate-700 p-2 rounded-lg border-2 border-gray-300 dark:border-slate-700">
           ${Array(9).fill(0).map((_, i) => `
             <button
-              class="gameCell bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 border-2 border-gray-300 dark:border-slate-700 rounded-lg transition-all duration-75 flex items-center justify-center text-3xl md:text-4xl cursor-pointer active:scale-95 min-h-[66px]"
+              class="gameCell bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 border-2 border-gray-300 dark:border-slate-700 rounded-lg transition-all duration-75 flex items-center justify-center text-2xl md:text-3xl cursor-pointer active:scale-95 min-h-[56px]"
               data-cell="${i}"
             >
               <span class="vapeEmoji hidden">💨</span>
@@ -135,7 +135,7 @@ export function initWhackAVape() {
       if (gameState.isRunning) {
         showVape();
       }
-    }, 500);
+    }, 800);
 
     gameState.timerInterval = setInterval(() => {
       gameState.timeLeft--;
