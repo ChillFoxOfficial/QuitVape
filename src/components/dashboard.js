@@ -2,6 +2,7 @@ import { renderRecommendations } from './recommendations.js';
 import { renderAvaliacoesSection } from './avaliacoes.js';
 import { renderCravingsTab } from './cravings.js';
 import { renderWhackAVape } from './whackAVape.js';
+import { t } from '../lib/i18n.js';
 
 const motivationalMessages = [
   { days: 1, message: "Parabéns! O primeiro dia é sempre o mais difícil. Continua!", type: "milestone" },
@@ -52,6 +53,7 @@ export function renderDashboard(appState) {
           <button id="tabCravings" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="cravings">Desejos</button>
           <button id="tabGame" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="game">Jogo</button>
           <button id="tabAbout" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="about">Sobre</button>
+          <button id="tabSupport" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="support">Apoio</button>
         </div>
       </div>
 
@@ -127,6 +129,62 @@ export function renderDashboard(appState) {
           </div>
           <p class="text-gray-700 dark:text-slate-200 leading-7">A QuitVape é uma empresa que se baseia num projeto criado para ajudar as pessoas a pararem de fumar, com foco especial em quem quer deixar o vape ou vaping. O nosso objetivo é oferecer ferramentas, motivação e apoio para que cada utilizador tenha sucesso na sua jornada para uma vida mais saudável.</p>
           <p class="mt-4 text-gray-600 dark:text-slate-400">Nascemos da crença de que pequenas mudanças diárias fazem uma grande diferença na saúde e no bem-estar. Estamos aqui para te acompanhar em cada passo dessa transformação.</p>
+        </div>
+      </div>
+
+      <div id="supportTab" class="tabContent hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-8">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-2">Apoio ao Cliente</h2>
+          <p class="text-gray-600 dark:text-slate-300 mb-6">Como podemos ajudar?</p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-50 dark:bg-slate-700 p-5 rounded-lg">
+              <h3 class="font-semibold text-gray-800 dark:text-slate-100 mb-2 flex items-center">
+                <svg class="h-5 w-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                Email
+              </h3>
+              <p class="text-gray-700 dark:text-slate-200 break-all">suporte@quitvape.pt</p>
+            </div>
+            
+            <div class="bg-gray-50 dark:bg-slate-700 p-5 rounded-lg">
+              <h3 class="font-semibold text-gray-800 dark:text-slate-100 mb-2 flex items-center">
+                <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                </svg>
+                Telefone
+              </h3>
+              <p class="text-gray-700 dark:text-slate-200">+351 XXX XXX XXX</p>
+            </div>
+          </div>
+
+          <div class="bg-blue-50 dark:bg-blue-900 p-5 rounded-lg mb-8">
+            <h3 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">Horário de Atendimento</h3>
+            <p class="text-blue-800 dark:text-blue-200">Segunda a Sexta: 9:00 - 18:00</p>
+            <p class="text-blue-800 dark:text-blue-200">Sábado e Domingo: Fechado</p>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-6">Perguntas Frequentes</h2>
+          
+          <div class="space-y-4">
+            <div class="bg-gray-50 dark:bg-slate-700 p-5 rounded-lg">
+              <h3 class="font-semibold text-gray-800 dark:text-slate-100 mb-2">Como funciona a aplicação?</h3>
+              <p class="text-gray-700 dark:text-slate-300">A QuitVape ajuda-te a rastrear o teu progresso na jornada sem vaping, mostrando estatísticas, economia e benefícios para a saúde.</p>
+            </div>
+            
+            <div class="bg-gray-50 dark:bg-slate-700 p-5 rounded-lg">
+              <h3 class="font-semibold text-gray-800 dark:text-slate-100 mb-2">Como defino a minha data de paragem?</h3>
+              <p class="text-gray-700 dark:text-slate-300">Clica em "Atualizar Dados" no dashboard e introduz a data em que paraste de fazer vaping.</p>
+            </div>
+            
+            <div class="bg-gray-50 dark:bg-slate-700 p-5 rounded-lg">
+              <h3 class="font-semibold text-gray-800 dark:text-slate-100 mb-2">Posso alterar o meu perfil?</h3>
+              <p class="text-gray-700 dark:text-slate-300">Sim, podes atualizar qualquer informação clicando em "Atualizar Dados".</p>
+            </div>
+          </div>
         </div>
       </div>
 

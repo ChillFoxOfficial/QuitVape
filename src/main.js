@@ -4,6 +4,7 @@ import { renderLoginPage } from './components/loginPage.js';
 import { renderDashboard } from './components/dashboard.js';
 import { attachCravingsHandlers, fetchRecentCravings } from './components/cravings.js';
 import { renderWhackAVape, initWhackAVape } from './components/whackAVape.js';
+import { getLanguage, setLanguage, getAllLanguages, getLanguageName } from './lib/i18n.js';
 
 const appState = {
   user: null,
@@ -218,6 +219,9 @@ VITE_SUPABASE_ANON_KEY=your-anon-key</code></pre>
 }
 
 function renderNavbar() {
+  const currentLang = getLanguage();
+  const languages = getAllLanguages();
+  
   return `
     <nav class="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 shadow-md z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-2">
@@ -226,6 +230,9 @@ function renderNavbar() {
           <button id="themeToggleBtn" class="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 px-2 py-1 rounded-full text-xs transition-all">
             Modo Escuro
           </button>
+          <select id="languageSelect" class="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 px-2 py-1 rounded-full text-xs transition-all">
+            ${languages.map(lang => `<option value="${lang}" ${lang === currentLang ? 'selected' : ''}>${getLanguageName(lang)}</option>`).join('')}
+          </select>
         </div>
         <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full text-xs transition-all">
           Sair
@@ -396,6 +403,14 @@ function attachDashboardHandlers(appState) {
     themeBtn.addEventListener('click', () => {
       const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
       setTheme(nextTheme);
+    });
+  }
+
+  const languageSelect = document.getElementById('languageSelect');
+  if (languageSelect) {
+    languageSelect.addEventListener('change', (e) => {
+      setLanguage(e.target.value);
+      render();
     });
   }
 
