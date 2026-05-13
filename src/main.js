@@ -290,6 +290,7 @@ async function handleLogin(e) {
   const isLogin = appState.authMode === 'login';
   const email = form.email.value.toLowerCase().trim();
   const password = form.password.value;
+  const confirmPassword = form.confirmPassword?.value || '';
   const name = form.name?.value?.trim() || '';
 
   const submitBtn = form.querySelector('button[type="submit"]');
@@ -304,6 +305,7 @@ async function handleLogin(e) {
     if (!email.includes('@')) throw new Error('Por favor, insira um email válido');
     if (password.length < 6) throw new Error('A password deve ter pelo menos 6 caracteres');
     if (!isLogin && name.length < 2) throw new Error('Por favor, insira o seu nome');
+    if (!isLogin && password !== confirmPassword) throw new Error('As palavras-passe não coincidem');
 
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
