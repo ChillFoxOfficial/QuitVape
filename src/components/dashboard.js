@@ -2,7 +2,6 @@ import { renderRecommendations } from './recommendations.js';
 import { renderAvaliacoesSection } from './avaliacoes.js';
 import { renderCravingsTab } from './cravings.js';
 import { renderWhackAVape } from './whackAVape.js';
-import { t } from '../lib/i18n.js';
 
 const motivationalMessages = [
   { days: 1, message: "Parabéns! O primeiro dia é sempre o mais difícil. Continua!", type: "milestone" },
@@ -26,7 +25,7 @@ const healthBenefits = [
 ];
 
 export function renderDashboard(appState) {
-  if (!appState.userData) {
+  if (!appState.userData || !appState.userData.setup_completed) {
     return renderSetupView(appState);
   }
 
@@ -61,7 +60,7 @@ export function renderDashboard(appState) {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           ${renderStatsCard('Dias Livres', stats.daysFree.toString(), 'dias consecutivos', 'from-green-500 to-emerald-500', `+${stats.daysFree}`)}
           ${renderStatsCard('Dinheiro Poupado', `€${stats.moneySaved.toFixed(2)}`, 'total poupado', 'from-blue-500 to-cyan-500', `+€${weeklySavings.toFixed(2)}/semana`)}
-          ${renderStatsCard('Vapes Evitados', stats.vapesAvoided.toString(), 'unidades não consumidas', 'from-pink-500 to-rose-500', `~${dailyVapesAvoided}/dia`)}
+          ${renderStatsCard('Vapes Evitados', stats.vapesAvoided.toString(), 'unidades evitadas', 'from-pink-500 to-rose-500', `~${dailyVapesAvoided}/dia`)}
         </div>
 
         ${currentMessage ? `

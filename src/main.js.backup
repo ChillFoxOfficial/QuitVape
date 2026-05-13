@@ -227,8 +227,6 @@ VITE_SUPABASE_ANON_KEY=your-anon-key</code></pre>
       </div>
     </div>
   `;
-}
-
 function attachLoginHandlers() {
   const toggleBtns = document.querySelectorAll('.toggleAuth');
   const form = document.getElementById('authForm');
@@ -284,7 +282,6 @@ async function handleLogin(e) {
           quit_date: new Date().toISOString().split('T')[0],
           weekly_cost: 0,
           vapes_per_week: 0,
-          setup_completed: false,
         }]);
         if (profileError) throw profileError;
       }
@@ -457,13 +454,13 @@ async function handleSetupSubmit(e) {
     
     const { error } = await supabase
       .from('user_profiles')
-      .update({ name, quit_date, weekly_cost, vapes_per_week, setup_completed: true })
+      .update({ name, quit_date, weekly_cost, vapes_per_week })
       .eq('user_id', appState.user.id);
 
     if (error) throw error;
 
     // Atualização do estado local para evitar ecrã branco
-    appState.userData = { ...appState.userData, name, quit_date, weekly_cost, vapes_per_week, setup_completed: true };
+    appState.userData = { ...appState.userData, name, quit_date, weekly_cost, vapes_per_week };
     
     document.getElementById('setupModal').style.display = 'none';
     render();
