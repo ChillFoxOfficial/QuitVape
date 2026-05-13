@@ -173,11 +173,11 @@ function render() {
       ${renderNavbar()}
       <div class="pt-20 px-4 pb-6">
         ${renderDashboard(appState)}
-        ${renderWhackAVape()}
       </div>
     </div>
   `;
 
+  window.whackAVapeUserName = appState.userData?.name || 'Jogador';
   attachDashboardHandlers(appState);
   initWhackAVape();
 }

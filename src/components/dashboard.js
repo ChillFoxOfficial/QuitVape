@@ -1,6 +1,7 @@
 import { renderRecommendations } from './recommendations.js';
 import { renderAvaliacoesSection } from './avaliacoes.js';
 import { renderCravingsTab } from './cravings.js';
+import { renderWhackAVape } from './whackAVape.js';
 
 const motivationalMessages = [
   { days: 1, message: "Parabéns! O primeiro dia é sempre o mais difícil. Continua!", type: "milestone" },
@@ -47,8 +48,9 @@ export function renderDashboard(appState) {
 
       <div class="mb-6 border-b border-gray-200">
         <div class="flex gap-2 overflow-x-auto">
-          <button id="tabDashboard" class="tabBtn active px-6 py-3 border-b-2 border-green-600 text-green-600 font-semibold" data-tab="dashboard">Dashboard</button>
-          <button id="tabCravings" class="tabBtn px-6 py-3 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="cravings">Desejos</button>
+          <button id="tabDashboard" class="tabBtn active px-5 py-2 border-b-2 border-green-600 text-green-600 font-semibold" data-tab="dashboard">Dashboard</button>
+          <button id="tabCravings" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="cravings">Desejos</button>
+          <button id="tabGame" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="game">Jogo</button>
         </div>
       </div>
 
@@ -103,6 +105,10 @@ export function renderDashboard(appState) {
 
       <div id="cravingsTab" class="tabContent hidden">
         ${renderCravingsTab(appState)}
+      </div>
+
+      <div id="gameTab" class="tabContent hidden">
+        ${renderWhackAVape()}
       </div>
 
       <div class="text-center mt-8">

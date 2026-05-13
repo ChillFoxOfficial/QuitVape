@@ -58,8 +58,80 @@ export function renderWhackAVape() {
         <p id="messageText" class="text-xl font-bold text-green-700 dark:text-emerald-100"></p>
         <p id="messageFinal" class="text-gray-600 dark:text-emerald-200 mt-2"></p>
       </div>
+
+      ${renderLeaderboard(loadLeaderboard())}
     </section>
   `;
+}
+
+function renderLeaderboard(entries) {
+  const rows = entries.length
+    ? entries.map((entry, index) => `
+        <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
+          <div>
+            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${entry.name}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${entry.date}</p>
+          </div>
+          <span class="text-lg font-bold text-green-600 dark:text-emerald-300">${entry.score}</span>
+        </div>
+      `).join('')
+    : `<p class="text-gray-600 dark:text-slate-300">Sem pontuações ainda. Joga para entrar na leaderboard!</p>`;
+
+  return `
+    <div id="leaderboardSection" class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-slate-100">Leaderboard</h3>
+          <p class="text-sm text-gray-500 dark:text-slate-400">Top 5 melhores pontuações</p>
+        </div>
+        <span class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registros</span>
+      </div>
+      <div id="leaderboardList" class="space-y-2">
+        ${rows}
+      </div>
+    </div>
+  `;
+}
+
+function loadLeaderboard() {
+  try {
+    const saved = localStorage.getItem('whackAVapeLeaderboard');
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveLeaderboard(entries) {
+  localStorage.setItem('whackAVapeLeaderboard', JSON.stringify(entries));
+}
+
+function addScoreToLeaderboard(score) {
+  const name = window.whackAVapeUserName || 'Jogador';
+  const newEntry = { name, score, date: new Date().toLocaleDateString() };
+  const entries = loadLeaderboard();
+  entries.push(newEntry);
+  entries.sort((a, b) => b.score - a.score);
+  const topEntries = entries.slice(0, 5);
+  saveLeaderboard(topEntries);
+  return topEntries;
+}
+
+function refreshLeaderboard() {
+  const leaderboardList = document.getElementById('leaderboardList');
+  if (!leaderboardList) return;
+  const entries = loadLeaderboard();
+  leaderboardList.innerHTML = entries.length
+    ? entries.map((entry, index) => `
+        <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
+          <div>
+            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${entry.name}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${entry.date}</p>
+          </div>
+          <span class="text-lg font-bold text-green-600 dark:text-emerald-300">${entry.score}</span>
+        </div>
+      `).join('')
+    : `<p class="text-gray-600 dark:text-slate-300">Sem pontuações ainda. Joga para entrar na leaderboard!</p>`;
 }
 
 export function initWhackAVape() {
@@ -165,6 +237,11 @@ export function initWhackAVape() {
     } else {
       messageText.textContent = '✅ Sucesso! Desejo Derrotado';
       messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
+    }
+
+    const updatedLeaderboard = addScoreToLeaderboard(gameState.score);
+    if (updatedLeaderboard.length) {
+      refreshLeaderboard();
     }
 
     gameMessage.classList.remove('hidden');
