@@ -17,6 +17,25 @@ const appState = {
 };
 
 const themeStorageKey = 'quitvapeTheme';
+const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || 'https://quit-vape-seven.vercel.app/';
+
+function getAuthRedirectUrl() {
+  return authRedirectUrl;
+}
+
+function getAuthErrorMessage(error, fallbackMessage) {
+  const message = error?.message || fallbackMessage;
+
+  if (message.includes('Invalid login credentials')) {
+    return 'Email ou password incorretos';
+  }
+
+  if (message.includes('Error sending confirmation email') || message === '{}') {
+    return 'Não foi possível enviar o email. Tenta novamente mais tarde.';
+  }
+
+  return message;
+}
 
 function setTheme(theme) {
   document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -271,6 +290,7 @@ async function handleLogin(e) {
   const isLogin = appState.authMode === 'login';
   const email = form.email.value.toLowerCase().trim();
   const password = form.password.value;
+  const confirmPassword = form.confirmPassword?.value || '';
   const name = form.name?.value?.trim() || '';
 
   const submitBtn = form.querySelector('button[type="submit"]');
@@ -285,6 +305,7 @@ async function handleLogin(e) {
     if (!email.includes('@')) throw new Error('Por favor, insira um email válido');
     if (password.length < 6) throw new Error('A password deve ter pelo menos 6 caracteres');
     if (!isLogin && name.length < 2) throw new Error('Por favor, insira o seu nome');
+    if (!isLogin && password !== confirmPassword) throw new Error('As palavras-passe não coincidem');
 
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -294,35 +315,21 @@ async function handleLogin(e) {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
+          emailRedirectTo: getAuthRedirectUrl(),
           data: { name },
         },
       });
       if (error) throw error;
 
       if (successDiv) {
-        successDiv.querySelector('p').textContent = 'Um email de confirmação foi enviado. Verifica a tua caixa de entrada antes de iniciar sessão.';
+        successDiv.querySelector('p').textContent = 'Consulta a tua caixa de entrada e a pasta de spam.';
         successDiv.style.display = 'block';
       }
       appState.authMode = 'login';
     }
   } catch (error) {
     if (errorDiv) {
-      let displayMessage;
-      if (error && typeof error === 'object' && 'message' in error && error.message) {
-        displayMessage = error.message;
-      } else if (typeof error === 'string') {
-        displayMessage = error;
-      } else {
-        displayMessage = JSON.stringify(error) || 'Ocorreu um erro desconhecido.';
-      }
-
-      if (displayMessage.includes('Invalid login credentials')) {
-        displayMessage = 'Email ou password incorretos';
-      }
-      if (displayMessage === '{}') {
-        displayMessage = 'Falha no envio do email de confirmação. Tenta novamente mais tarde.';
-      }
+      const displayMessage = getAuthErrorMessage(error, 'Ocorreu um erro desconhecido.');
 
       errorDiv.querySelector('p').textContent = displayMessage;
       errorDiv.style.display = 'block';
@@ -347,16 +354,16 @@ async function handleForgotPassword(e) {
   try {
     if (!email.includes('@')) throw new Error('Por favor, insira um email valido');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname,
+      redirectTo: getAuthRedirectUrl(),
     });
     if (error) throw error;
     if (successDiv) {
-      successDiv.querySelector('p').textContent = 'Se existir uma conta com este email, recebera um link para repor a palavra-passe.';
+      successDiv.querySelector('p').textContent = 'Consulta a tua caixa de entrada e a pasta de spam.';
       successDiv.style.display = 'block';
     }
   } catch (error) {
     if (errorDiv) {
-      errorDiv.querySelector('p').textContent = error.message;
+      errorDiv.querySelector('p').textContent = getAuthErrorMessage(error, 'Falha ao pedir recuperação de palavra-passe.');
       errorDiv.style.display = 'block';
     }
   } finally {

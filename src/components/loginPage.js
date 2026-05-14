@@ -241,6 +241,22 @@ export function renderLoginPage(appState) {
               <p class="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
             </div>
 
+            ${!isLogin ? `
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Confirmar palavra-passe
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  placeholder="Repete a tua palavra-passe"
+                  required
+                  minlength="6"
+                />
+              </div>
+            ` : ''}
+
             ${isLogin ? `
               <div class="text-right">
                 <button type="button" class="toggleAuth text-sm text-green-600 hover:text-green-700 font-medium transition-colors" data-mode="forgot">
