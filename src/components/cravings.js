@@ -105,6 +105,36 @@ export function renderCravingsTab(appState) {
   `;
 }
 
+function renderCravingsHistory(cravings) {
+  return cravings.length > 0 ? `
+    <div class="space-y-3 max-h-64 overflow-y-auto">
+      ${cravings.map(craving => `
+        <div class="border-l-4 border-green-500 bg-gray-50 p-4 rounded">
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">
+              Intensidade: ${craving.intensity}/5
+            </span>
+            <span class="text-sm text-gray-500">${new Date(craving.created_at).toLocaleDateString('pt-PT')}</span>
+          </div>
+          ${craving.notes ? `<p class="text-gray-700">${escapeHtml(craving.notes)}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  ` : `
+    <p class="text-gray-500 text-center py-8">Nenhum desejo registado ainda. Ã“timo sinal!</p>
+  `;
+}
+
+function refreshCravingsHistory(cravings) {
+  const historyCard = document.querySelector('#cravingsTab h3')?.parentElement;
+  if (historyCard) {
+    historyCard.innerHTML = `
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Hist&oacute;rico de Desejos</h3>
+      ${renderCravingsHistory(cravings)}
+    `;
+  }
+}
+
 function getCravingFeedback(intensity) {
   return cravingFeedback[intensity] || cravingFeedback[3];
 }
@@ -129,6 +159,15 @@ function renderFeedbackMessage(intensity) {
       </div>
     ` : ''}
   `;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 export async function attachCravingsHandlers(appState, userId) {
@@ -204,6 +243,7 @@ export async function attachCravingsHandlers(appState, userId) {
       }
 
       await fetchRecentCravings(appState, userId);
+      refreshCravingsHistory(appState.recentCravings || []);
 
       if (intensity >= 4) {
         setTimeout(() => {

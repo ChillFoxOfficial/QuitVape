@@ -366,13 +366,23 @@ export function initWhackAVape() {
     saveScoreBtn.disabled = true;
     saveScoreBtn.textContent = 'A registar...';
 
-    const entries = await saveRemoteScore(gameState.lastFinishedScore);
-    if (entries) {
-      refreshLeaderboard(entries);
-    }
+    try {
+      const entries = await saveRemoteScore(gameState.lastFinishedScore);
+      if (!entries) {
+        throw new Error('Leaderboard indisponivel');
+      }
 
-    gameState.scoreRegistered = true;
-    saveScoreBtn.textContent = 'Pontua\u00e7\u00e3o registada';
+      refreshLeaderboard(entries);
+
+      gameState.scoreRegistered = true;
+      saveScoreBtn.textContent = 'Pontua\u00e7\u00e3o registada';
+      messageFinal.textContent = `${messageFinal.textContent} | Pontua\u00e7\u00e3o registada`;
+    } catch (error) {
+      console.error('Error registering Whack-a-Vape score:', error);
+      saveScoreBtn.disabled = false;
+      saveScoreBtn.textContent = 'Tentar novamente';
+      messageFinal.textContent = `${messageFinal.textContent} | N\u00e3o foi poss\u00edvel registar. Tenta novamente.`;
+    }
   });
 
   resetBtn.addEventListener('click', () => {
