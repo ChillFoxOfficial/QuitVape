@@ -227,6 +227,7 @@ function render() {
   `;
 
   window.whackAVapeUserName = appState.userData?.name || 'Jogador';
+  window.whackAVapeUserId = appState.user?.id || null;
   attachDashboardHandlers(appState);
   initWhackAVape();
 }

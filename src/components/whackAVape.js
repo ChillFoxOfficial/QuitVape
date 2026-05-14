@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase.js';
+
 export function renderWhackAVape() {
   return `
     <section id="whackAVapeSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-5 mb-8">
@@ -57,6 +59,12 @@ export function renderWhackAVape() {
       <div id="gameMessage" class="hidden text-center p-4 bg-green-50 dark:bg-emerald-900 border border-green-200 dark:border-emerald-700 rounded-lg mb-4">
         <p id="messageText" class="text-xl font-bold text-green-700 dark:text-emerald-100"></p>
         <p id="messageFinal" class="text-gray-600 dark:text-emerald-200 mt-2"></p>
+        <button
+          id="saveScoreBtn"
+          class="hidden mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-full text-sm transition-all"
+        >
+          Registar pontua&ccedil;&atilde;o
+        </button>
       </div>
 
       ${renderLeaderboard(loadLeaderboard())}
@@ -69,8 +77,8 @@ function renderLeaderboard(entries) {
     ? entries.map((entry, index) => `
         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
           <div>
-            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${entry.name}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400">${entry.date}</p>
+            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${escapeHtml(entry.name)}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${escapeHtml(entry.date)}</p>
           </div>
           <span class="text-lg font-bold text-green-600 dark:text-emerald-300">${entry.score}</span>
         </div>
@@ -84,7 +92,7 @@ function renderLeaderboard(entries) {
           <h3 class="text-lg font-semibold text-gray-800 dark:text-slate-100">Leaderboard</h3>
           <p class="text-sm text-gray-500 dark:text-slate-400">Top 5 melhores pontuações</p>
         </div>
-        <span class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registros</span>
+          <span id="leaderboardCount" class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registos</span>
       </div>
       <div id="leaderboardList" class="space-y-2">
         ${rows}
@@ -106,7 +114,7 @@ function saveLeaderboard(entries) {
   localStorage.setItem('whackAVapeLeaderboard', JSON.stringify(entries));
 }
 
-function addScoreToLeaderboard(score) {
+function addLocalScoreToLeaderboard(score) {
   const name = window.whackAVapeUserName || 'Jogador';
   const newEntry = { name, score, date: new Date().toLocaleDateString() };
   const entries = loadLeaderboard();
@@ -117,16 +125,102 @@ function addScoreToLeaderboard(score) {
   return topEntries;
 }
 
-function refreshLeaderboard() {
+function formatScoreDate(value) {
+  if (!value) return '';
+
+  return new Date(value).toLocaleDateString('pt-PT');
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+async function loadRemoteLeaderboard() {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('whack_a_vape_scores')
+    .select('player_name, score, updated_at')
+    .order('score', { ascending: false })
+    .order('updated_at', { ascending: true })
+    .limit(5);
+
+  if (error) {
+    console.error('Error fetching Whack-a-Vape leaderboard:', error);
+    return null;
+  }
+
+  return (data || []).map(entry => ({
+    name: entry.player_name || 'Jogador',
+    score: entry.score || 0,
+    date: formatScoreDate(entry.updated_at),
+  }));
+}
+
+async function saveRemoteScore(score) {
+  if (!supabase || !window.whackAVapeUserId) {
+    return addLocalScoreToLeaderboard(score);
+  }
+
+  const userId = window.whackAVapeUserId;
+  const playerName = window.whackAVapeUserName || 'Jogador';
+
+  const { data: existingEntry, error: fetchError } = await supabase
+    .from('whack_a_vape_scores')
+    .select('score')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Error fetching Whack-a-Vape score:', fetchError);
+    return addLocalScoreToLeaderboard(score);
+  }
+
+  if (existingEntry && score <= existingEntry.score) {
+    return loadRemoteLeaderboard();
+  }
+
+  const payload = {
+    user_id: userId,
+    player_name: playerName,
+    score,
+    updated_at: new Date().toISOString(),
+  };
+
+  const query = existingEntry
+    ? supabase.from('whack_a_vape_scores').update(payload).eq('user_id', userId)
+    : supabase.from('whack_a_vape_scores').insert([payload]);
+
+  const { error } = await query;
+
+  if (error) {
+    console.error('Error saving Whack-a-Vape score:', error);
+    return addLocalScoreToLeaderboard(score);
+  }
+
+  return loadRemoteLeaderboard();
+}
+
+function refreshLeaderboard(entries = loadLeaderboard()) {
   const leaderboardList = document.getElementById('leaderboardList');
+  const leaderboardCount = document.getElementById('leaderboardCount');
   if (!leaderboardList) return;
-  const entries = loadLeaderboard();
+
+  if (leaderboardCount) {
+    leaderboardCount.textContent = `${entries.length} registos`;
+  }
+
   leaderboardList.innerHTML = entries.length
     ? entries.map((entry, index) => `
         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
           <div>
-            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${entry.name}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400">${entry.date}</p>
+            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${escapeHtml(entry.name)}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${escapeHtml(entry.date)}</p>
           </div>
           <span class="text-lg font-bold text-green-600 dark:text-emerald-300">${entry.score}</span>
         </div>
@@ -142,6 +236,8 @@ export function initWhackAVape() {
     highScore: parseInt(localStorage.getItem('whackAVapeHighScore') || '0'),
     currentVapeCell: null,
     timerInterval: null,
+    lastFinishedScore: null,
+    scoreRegistered: false,
   };
 
   const startBtn = document.getElementById('startGameBtn');
@@ -150,6 +246,7 @@ export function initWhackAVape() {
   const gameMessage = document.getElementById('gameMessage');
   const messageText = document.getElementById('messageText');
   const messageFinal = document.getElementById('messageFinal');
+  const saveScoreBtn = document.getElementById('saveScoreBtn');
   const timerDisplay = document.getElementById('timerDisplay');
   const scoreDisplay = document.getElementById('scoreDisplay');
   const highScoreDisplay = document.getElementById('highScoreDisplay');
@@ -162,6 +259,12 @@ export function initWhackAVape() {
 
   resetBtn.disabled = true;
   highScoreDisplay.textContent = gameState.highScore;
+
+  loadRemoteLeaderboard().then(entries => {
+    if (entries) {
+      refreshLeaderboard(entries);
+    }
+  });
 
   function showVape() {
     if (!gameState.isRunning) return;
@@ -197,7 +300,10 @@ export function initWhackAVape() {
     gameState.timeLeft = 60;
     gameState.score = 0;
     gameState.currentVapeCell = null;
+    gameState.lastFinishedScore = null;
+    gameState.scoreRegistered = false;
     gameMessage.classList.add('hidden');
+    saveScoreBtn?.classList.add('hidden');
     startBtn.disabled = true;
     resetBtn.disabled = false;
     updateUI();
@@ -239,9 +345,12 @@ export function initWhackAVape() {
       messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
     }
 
-    const updatedLeaderboard = addScoreToLeaderboard(gameState.score);
-    if (updatedLeaderboard.length) {
-      refreshLeaderboard();
+    gameState.lastFinishedScore = gameState.score;
+    gameState.scoreRegistered = false;
+    if (saveScoreBtn) {
+      saveScoreBtn.disabled = false;
+      saveScoreBtn.textContent = 'Registar pontua\u00e7\u00e3o';
+      saveScoreBtn.classList.remove('hidden');
     }
 
     gameMessage.classList.remove('hidden');
@@ -251,13 +360,31 @@ export function initWhackAVape() {
 
   startBtn.addEventListener('click', startGame);
 
+  saveScoreBtn?.addEventListener('click', async () => {
+    if (gameState.lastFinishedScore === null || gameState.scoreRegistered) return;
+
+    saveScoreBtn.disabled = true;
+    saveScoreBtn.textContent = 'A registar...';
+
+    const entries = await saveRemoteScore(gameState.lastFinishedScore);
+    if (entries) {
+      refreshLeaderboard(entries);
+    }
+
+    gameState.scoreRegistered = true;
+    saveScoreBtn.textContent = 'Pontua\u00e7\u00e3o registada';
+  });
+
   resetBtn.addEventListener('click', () => {
     gameState.isRunning = false;
     if (gameState.timerInterval) clearInterval(gameState.timerInterval);
     gameState.timeLeft = 60;
     gameState.score = 0;
     gameState.currentVapeCell = null;
+    gameState.lastFinishedScore = null;
+    gameState.scoreRegistered = false;
     gameMessage.classList.add('hidden');
+    saveScoreBtn?.classList.add('hidden');
     cells.forEach(cell => {
       cell.querySelector('.vapeEmoji').classList.add('hidden');
     });
