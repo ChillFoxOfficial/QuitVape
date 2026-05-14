@@ -125,11 +125,26 @@ async function fetchUserData(userId) {
       console.error('Error fetching user data:', error);
     } else if (data) {
       appState.userData = data;
+      const currentEmail = appState.user?.email?.toLowerCase() || '';
+      if (currentEmail && data.email !== currentEmail) {
+        const { error: emailUpdateError } = await supabase
+          .from('user_profiles')
+          .update({ email: currentEmail })
+          .eq('user_id', userId);
+
+        if (emailUpdateError) {
+          console.error('Error updating profile email:', emailUpdateError);
+        } else {
+          appState.userData = { ...data, email: currentEmail };
+        }
+      }
     } else {
       const user = supabase.auth.getUser ? (await supabase.auth.getUser()).data.user : null;
+      const defaultEmail = user?.email?.toLowerCase() || '';
       const defaultName = user?.user_metadata?.name || '';
       const { error: insertError, data: insertedData } = await supabase.from('user_profiles').insert([{
         user_id: userId,
+        email: defaultEmail,
         name: defaultName,
         quit_date: new Date().toISOString().split('T')[0],
         weekly_cost: 0,
@@ -504,13 +519,13 @@ async function handleSetupSubmit(e) {
     
     const { error } = await supabase
       .from('user_profiles')
-      .update({ name, quit_date, weekly_cost, vapes_per_week, setup_completed: true })
+      .update({ name, email: appState.user.email?.toLowerCase() || '', quit_date, weekly_cost, vapes_per_week, setup_completed: true })
       .eq('user_id', appState.user.id);
 
     if (error) throw error;
 
     // Atualização do estado local para evitar ecrã branco
-    appState.userData = { ...appState.userData, name, quit_date, weekly_cost, vapes_per_week, setup_completed: true };
+    appState.userData = { ...appState.userData, name, email: appState.user.email?.toLowerCase() || '', quit_date, weekly_cost, vapes_per_week, setup_completed: true };
     
     document.getElementById('setupModal').style.display = 'none';
     render();
@@ -531,13 +546,18 @@ async function handleAvaliacaoSubmit(e) {
   try {
     if (!alvoEmail.includes('@')) throw new Error('Email inválido');
     
-    const { data: profileData } = await supabase
+    if (!nota || nota < 1 || nota > 5) throw new Error('Seleciona uma nota de 1 a 5');
+
+    const { data: profileData, error: profileError } = await supabase
       .from('user_profiles')
       .select('user_id')
-      .ilike('name', alvoEmail.split('@')[0])
+      .eq('email', alvoEmail)
       .limit(1);
 
     const alvoId = profileData?.[0]?.user_id;
+    if (profileError) throw profileError;
+    if (!alvoId) throw new Error('Nao encontrei nenhum utilizador com esse email');
+    if (alvoId === appState.user.id) throw new Error('Nao podes avaliar a tua propria conta');
     if (!alvoId || alvoId === appState.user.id) throw new Error('Utilizador inválido');
 
     await supabase.from('avaliacoes').insert([{ id_autor: appState.user.id, id_alvo: alvoId, nota, comentario }]);

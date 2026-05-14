@@ -6,7 +6,7 @@ export function renderWhackAVape() {
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Whack-a-Vape</h2>
-          <p class="text-gray-600 dark:text-slate-300">Clique no emoji de vape antes que o tempo acabe.</p>
+          <p class="text-gray-600 dark:text-slate-300">Jogo desenhado para desviar o foco durante picos de vontade de fumar. Clica no fumo antes que o tempo acabe.</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <button
