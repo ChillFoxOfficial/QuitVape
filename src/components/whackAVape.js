@@ -313,7 +313,7 @@ export function initWhackAVape() {
       if (gameState.isRunning) {
         showVape();
       }
-    }, 1400);
+    }, 2000);
 
     gameState.timerInterval = setInterval(() => {
       gameState.timeLeft--;
