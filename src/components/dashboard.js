@@ -154,7 +154,7 @@ export function renderDashboard(appState) {
                 </svg>
                 Telefone
               </h3>
-              <p class="text-gray-700 dark:text-slate-200">+351 XXX XXX XXX</p>
+              <p class="text-gray-700 dark:text-slate-200">+351 968 968 968</p>
             </div>
           </div>
 
