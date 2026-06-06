@@ -14,10 +14,24 @@ const appState = {
   mediaNotas: 0,
   totalAvaliacoes: 0,
   recentCravings: [],
+  isAdmin: false,
+  adminData: {
+    users: [],
+    avaliacoes: [],
+    scores: [],
+    loading: false,
+    error: '',
+  },
+  activeTab: 'dashboard',
 };
 
 const themeStorageKey = 'quitvapeTheme';
 const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || 'https://quit-vape-seven.vercel.app/';
+const adminEmails = ['admin@quitvape.pt'];
+
+function isAdminEmail(email) {
+  return adminEmails.includes((email || '').toLowerCase());
+}
 
 function getAuthRedirectUrl() {
   return authRedirectUrl;
@@ -76,6 +90,7 @@ async function initApp() {
 
   const { data: { session } } = await supabase.auth.getSession();
   appState.user = session?.user || null;
+  appState.isAdmin = isAdminEmail(appState.user?.email);
 
   if (appState.user) {
     await fetchUserData(appState.user.id);
@@ -97,6 +112,7 @@ async function initApp() {
     }
 
     appState.user = session?.user || null;
+    appState.isAdmin = isAdminEmail(appState.user?.email);
     if (appState.user) {
       await fetchUserData(appState.user.id);
       await fetchAvaliacoes(appState.user.id);
@@ -107,6 +123,9 @@ async function initApp() {
       appState.mediaNotas = 0;
       appState.totalAvaliacoes = 0;
       appState.recentCravings = [];
+      appState.isAdmin = false;
+      appState.adminData = { users: [], avaliacoes: [], scores: [], loading: false, error: '' };
+      appState.activeTab = 'dashboard';
       appState.loading = false;
     }
     render();
@@ -130,10 +149,13 @@ async function fetchUserData(userId) {
       const defaultName = user?.user_metadata?.name || '';
       const { error: insertError, data: insertedData } = await supabase.from('user_profiles').insert([{
         user_id: userId,
+        email: user?.email || null,
         name: defaultName,
         quit_date: new Date().toISOString().split('T')[0],
         weekly_cost: 0,
         vapes_per_week: 0,
+        e_liquid_ml_per_week: 0,
+        nicotine_mg_per_ml: null,
         setup_completed: false,
       }]).select().maybeSingle();
 
@@ -227,6 +249,7 @@ function render() {
   `;
 
   window.whackAVapeUserName = appState.userData?.name || 'Jogador';
+  window.whackAVapeUserId = appState.user?.id || null;
   attachDashboardHandlers(appState);
   initWhackAVape();
 }
@@ -304,6 +327,7 @@ async function handleLogin(e) {
   try {
     if (!email.includes('@')) throw new Error('Por favor, insira um email válido');
     if (password.length < 6) throw new Error('A password deve ter pelo menos 6 caracteres');
+    if (!isLogin && isAdminEmail(email)) throw new Error('Esta conta admin deve ser criada manualmente no Supabase.');
     if (!isLogin && name.length < 2) throw new Error('Por favor, insira o seu nome');
     if (!isLogin && password !== confirmPassword) throw new Error('As palavras-passe não coincidem');
 
@@ -420,6 +444,7 @@ function attachDashboardHandlers(appState) {
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const tabName = btn.dataset.tab;
+      appState.activeTab = tabName;
       tabBtns.forEach(b => {
         b.classList.remove('border-green-600', 'text-green-600');
         b.classList.add('border-transparent', 'text-gray-600');
@@ -428,6 +453,7 @@ function attachDashboardHandlers(appState) {
       document.querySelectorAll('.tabContent').forEach(tab => tab.classList.add('hidden'));
       document.getElementById(`${tabName}Tab`).classList.remove('hidden');
       if (tabName === 'cravings') attachCravingsHandlers(appState, appState.user.id);
+      if (tabName === 'admin') fetchAdminData(true);
     });
   });
 
@@ -485,6 +511,79 @@ function attachDashboardHandlers(appState) {
 
   const avaliacaoForm = document.getElementById('avaliacaoForm');
   if (avaliacaoForm) avaliacaoForm.addEventListener('submit', handleAvaliacaoSubmit);
+
+  const refreshAdminBtn = document.getElementById('refreshAdminBtn');
+  if (refreshAdminBtn) refreshAdminBtn.addEventListener('click', () => fetchAdminData(true));
+
+  document.querySelectorAll('.adminDeleteScoreBtn').forEach(btn => {
+    btn.addEventListener('click', () => handleAdminDeleteScore(btn.dataset.id));
+  });
+
+  document.querySelectorAll('.adminDeleteAvaliacaoBtn').forEach(btn => {
+    btn.addEventListener('click', () => handleAdminDeleteAvaliacao(btn.dataset.id));
+  });
+}
+
+async function fetchAdminData(showLoading = false) {
+  if (!appState.isAdmin) return;
+
+  if (showLoading) {
+    appState.adminData = { ...appState.adminData, loading: true, error: '' };
+    render();
+  }
+
+  try {
+    const [usersResult, avaliacoesResult, scoresResult] = await Promise.all([
+      supabase.rpc('admin_list_users'),
+      supabase.rpc('admin_list_avaliacoes'),
+      supabase.rpc('admin_list_whack_scores'),
+    ]);
+
+    const firstError = usersResult.error || avaliacoesResult.error || scoresResult.error;
+    if (firstError) throw firstError;
+
+    appState.adminData = {
+      users: usersResult.data || [],
+      avaliacoes: avaliacoesResult.data || [],
+      scores: scoresResult.data || [],
+      loading: false,
+      error: '',
+    };
+  } catch (error) {
+    appState.adminData = {
+      ...appState.adminData,
+      loading: false,
+      error: error.message || 'Falha ao carregar dados admin.',
+    };
+  }
+
+  render();
+}
+
+async function handleAdminDeleteScore(scoreId) {
+  if (!scoreId || !appState.isAdmin) return;
+  if (!confirm('Apagar esta pontuação do leaderboard?')) return;
+
+  const { error } = await supabase.rpc('admin_delete_whack_score', { target_id: scoreId });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await fetchAdminData(false);
+}
+
+async function handleAdminDeleteAvaliacao(avaliacaoId) {
+  if (!avaliacaoId || !appState.isAdmin) return;
+  if (!confirm('Apagar esta avaliação?')) return;
+
+  const { error } = await supabase.rpc('admin_delete_avaliacao', { target_id: avaliacaoId });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await fetchAdminData(false);
 }
 
 async function handleSetupSubmit(e) {
@@ -492,24 +591,33 @@ async function handleSetupSubmit(e) {
   const form = e.target;
   const name = form.name.value.trim();
   const quit_date = form.quit_date.value;
-  const weekly_cost = parseFloat(form.weekly_cost.value) || 0;
-  const vapes_per_week = parseInt(form.vapes_per_week.value) || 0;
+  const weeklyCostValue = form.weekly_cost.value;
+  const liquidMlValue = form.e_liquid_ml_per_week.value;
+  const weekly_cost = parseFloat(weeklyCostValue);
+  const e_liquid_ml_per_week = parseFloat(liquidMlValue);
+  const nicotine_mg_per_ml = form.nicotine_mg_per_ml.value === '' ? null : parseFloat(form.nicotine_mg_per_ml.value);
 
   const submitBtn = form.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
 
   try {
-    if (!name || !quit_date) throw new Error('Preencha todos os campos obrigatórios');
-    
+    if (!name || !quit_date || weeklyCostValue === '' || liquidMlValue === '') throw new Error('Preencha todos os campos obrigatórios');
+    if (Number.isNaN(weekly_cost) || weekly_cost < 0) throw new Error('O custo semanal deve ser um número válido');
+    if (Number.isNaN(e_liquid_ml_per_week) || e_liquid_ml_per_week <= 0) throw new Error('Os ml de E-Liquido por semana devem ser maiores que zero');
+    if (nicotine_mg_per_ml !== null && (Number.isNaN(nicotine_mg_per_ml) || nicotine_mg_per_ml < 0)) throw new Error('A nicotina deve ser um número válido');
+
+    const { data: authData } = await supabase.auth.getUser();
+    const email = authData?.user?.email || null;
+     
     const { error } = await supabase
       .from('user_profiles')
-      .update({ name, quit_date, weekly_cost, vapes_per_week, setup_completed: true })
+      .update({ name, email, quit_date, weekly_cost, e_liquid_ml_per_week, nicotine_mg_per_ml, setup_completed: true })
       .eq('user_id', appState.user.id);
 
     if (error) throw error;
 
     // Atualização do estado local para evitar ecrã branco
-    appState.userData = { ...appState.userData, name, quit_date, weekly_cost, vapes_per_week, setup_completed: true };
+    appState.userData = { ...appState.userData, name, email, quit_date, weekly_cost, e_liquid_ml_per_week, nicotine_mg_per_ml, setup_completed: true };
     
     document.getElementById('setupModal').style.display = 'none';
     render();
@@ -530,16 +638,17 @@ async function handleAvaliacaoSubmit(e) {
   try {
     if (!alvoEmail.includes('@')) throw new Error('Email inválido');
     
-    const { data: profileData } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .ilike('name', alvoEmail.split('@')[0])
-      .limit(1);
+    if (!nota || nota < 1 || nota > 5) throw new Error('Selecione uma nota');
 
-    const alvoId = profileData?.[0]?.user_id;
-    if (!alvoId || alvoId === appState.user.id) throw new Error('Utilizador inválido');
+    const { data: alvoId, error: lookupError } = await supabase
+      .rpc('find_user_id_by_email', { target_email: alvoEmail });
 
-    await supabase.from('avaliacoes').insert([{ id_autor: appState.user.id, id_alvo: alvoId, nota, comentario }]);
+    if (lookupError) throw lookupError;
+    if (!alvoId) throw new Error('Não foi encontrado nenhum utilizador com esse email');
+    if (alvoId === appState.user.id) throw new Error('Não podes avaliar o teu próprio perfil');
+
+    const { error: insertError } = await supabase.from('avaliacoes').insert([{ id_autor: appState.user.id, id_alvo: alvoId, nota, comentario }]);
+    if (insertError) throw insertError;
     
     document.getElementById('avaliacaoModal').style.display = 'none';
     await fetchAvaliacoes(appState.user.id);

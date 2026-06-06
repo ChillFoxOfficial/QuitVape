@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase.js';
+
 export function renderWhackAVape() {
   return `
     <section id="whackAVapeSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-5 mb-8">
@@ -59,7 +61,7 @@ export function renderWhackAVape() {
         <p id="messageFinal" class="text-gray-600 dark:text-emerald-200 mt-2"></p>
       </div>
 
-      ${renderLeaderboard(loadLeaderboard())}
+      ${renderLeaderboard([])}
     </section>
   `;
 }
@@ -84,7 +86,7 @@ function renderLeaderboard(entries) {
           <h3 class="text-lg font-semibold text-gray-800 dark:text-slate-100">Leaderboard</h3>
           <p class="text-sm text-gray-500 dark:text-slate-400">Top 5 melhores pontuações</p>
         </div>
-        <span class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registros</span>
+        <span class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registos</span>
       </div>
       <div id="leaderboardList" class="space-y-2">
         ${rows}
@@ -93,34 +95,49 @@ function renderLeaderboard(entries) {
   `;
 }
 
-function loadLeaderboard() {
-  try {
-    const saved = localStorage.getItem('whackAVapeLeaderboard');
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
+async function loadLeaderboard() {
+  const { data, error } = await supabase
+    .from('whack_scores')
+    .select('id, player_name, score, created_at')
+    .order('score', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(5);
+
+  if (error) {
+    console.error('Error loading leaderboard:', error);
     return [];
   }
+
+  return (data || []).map(entry => ({
+    id: entry.id,
+    name: entry.player_name,
+    score: entry.score,
+    date: new Date(entry.created_at).toLocaleDateString('pt-PT'),
+  }));
 }
 
-function saveLeaderboard(entries) {
-  localStorage.setItem('whackAVapeLeaderboard', JSON.stringify(entries));
-}
-
-function addScoreToLeaderboard(score) {
+async function addScoreToLeaderboard(score) {
+  const userId = window.whackAVapeUserId;
   const name = window.whackAVapeUserName || 'Jogador';
-  const newEntry = { name, score, date: new Date().toLocaleDateString() };
-  const entries = loadLeaderboard();
-  entries.push(newEntry);
-  entries.sort((a, b) => b.score - a.score);
-  const topEntries = entries.slice(0, 5);
-  saveLeaderboard(topEntries);
-  return topEntries;
+
+  if (!userId) return loadLeaderboard();
+
+  const { error } = await supabase
+    .from('whack_scores')
+    .insert([{ user_id: userId, player_name: name, score }]);
+
+  if (error) {
+    console.error('Error saving leaderboard score:', error);
+  }
+
+  return loadLeaderboard();
 }
 
-function refreshLeaderboard() {
+async function refreshLeaderboard() {
   const leaderboardList = document.getElementById('leaderboardList');
   if (!leaderboardList) return;
-  const entries = loadLeaderboard();
+  leaderboardList.innerHTML = '<p class="text-gray-600 dark:text-slate-300">A carregar leaderboard...</p>';
+  const entries = await loadLeaderboard();
   leaderboardList.innerHTML = entries.length
     ? entries.map((entry, index) => `
         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
@@ -162,6 +179,7 @@ export function initWhackAVape() {
 
   resetBtn.disabled = true;
   highScoreDisplay.textContent = gameState.highScore;
+  refreshLeaderboard();
 
   function showVape() {
     if (!gameState.isRunning) return;
@@ -239,10 +257,7 @@ export function initWhackAVape() {
       messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
     }
 
-    const updatedLeaderboard = addScoreToLeaderboard(gameState.score);
-    if (updatedLeaderboard.length) {
-      refreshLeaderboard();
-    }
+    addScoreToLeaderboard(gameState.score).then(() => refreshLeaderboard());
 
     gameMessage.classList.remove('hidden');
     startBtn.disabled = false;

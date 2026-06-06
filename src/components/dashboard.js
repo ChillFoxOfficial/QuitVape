@@ -2,6 +2,7 @@ import { renderRecommendations } from './recommendations.js';
 import { renderAvaliacoesSection } from './avaliacoes.js';
 import { renderCravingsTab } from './cravings.js';
 import { renderWhackAVape } from './whackAVape.js';
+import { renderAdminPanel } from './adminPanel.js';
 
 const motivationalMessages = [
   { days: 1, message: "Parabéns! O primeiro dia é sempre o mais difícil. Continua!", type: "milestone" },
@@ -25,7 +26,9 @@ const healthBenefits = [
 ];
 
 export function renderDashboard(appState) {
-  if (!appState.userData || !appState.userData.setup_completed) {
+  const isAdmin = Boolean(appState.isAdmin);
+
+  if (!appState.userData || (!appState.userData.setup_completed && !isAdmin)) {
     return renderSetupView(appState);
   }
 
@@ -35,7 +38,10 @@ export function renderDashboard(appState) {
   const mediaNotas = appState.mediaNotas || 0;
   const totalAvaliacoes = appState.totalAvaliacoes || 0;
   const weeklySavings = stats.daysFree > 0 ? stats.moneySaved / stats.daysFree * 7 : 0;
-  const dailyVapesAvoided = stats.daysFree > 0 ? Math.floor(stats.vapesAvoided / stats.daysFree) : 0;
+  const dailyLiquidAvoided = stats.daysFree > 0 ? stats.liquidAvoided / stats.daysFree : 0;
+  const hasNicotineData = stats.nicotineMgPerMl > 0;
+  const accountCreatedAt = formatAccountCreatedAt(appState.userData.created_at);
+  const activeTab = appState.activeTab || 'dashboard';
 
   return `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -48,19 +54,21 @@ export function renderDashboard(appState) {
 
       <div class="mb-6 border-b border-gray-200">
         <div class="flex gap-2 overflow-x-auto">
-          <button id="tabDashboard" class="tabBtn active px-5 py-2 border-b-2 border-green-600 text-green-600 font-semibold" data-tab="dashboard">Dashboard</button>
-          <button id="tabCravings" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="cravings">Desejos</button>
-          <button id="tabGame" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="game">Jogo</button>
-          <button id="tabAbout" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="about">Sobre</button>
-          <button id="tabSupport" class="tabBtn px-5 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:border-green-600" data-tab="support">Apoio</button>
+          <button id="tabDashboard" class="${getTabButtonClass(activeTab, 'dashboard')}" data-tab="dashboard">Dashboard</button>
+          <button id="tabCravings" class="${getTabButtonClass(activeTab, 'cravings')}" data-tab="cravings">Desejos</button>
+          <button id="tabGame" class="${getTabButtonClass(activeTab, 'game')}" data-tab="game">Jogo</button>
+          ${isAdmin ? `<button id="tabAdmin" class="${getTabButtonClass(activeTab, 'admin')}" data-tab="admin">Admin</button>` : ''}
+          <button id="tabAbout" class="${getTabButtonClass(activeTab, 'about')}" data-tab="about">Sobre</button>
+          <button id="tabSupport" class="${getTabButtonClass(activeTab, 'support')}" data-tab="support">Apoio</button>
         </div>
       </div>
 
-      <div id="dashboardTab" class="tabContent">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div id="dashboardTab" class="${getTabContentClass(activeTab, 'dashboard')}">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           ${renderStatsCard('Dias Livres', stats.daysFree.toString(), 'dias consecutivos', 'from-green-500 to-emerald-500', `+${stats.daysFree}`)}
           ${renderStatsCard('Dinheiro Poupado', `€${stats.moneySaved.toFixed(2)}`, 'total poupado', 'from-blue-500 to-cyan-500', `+€${weeklySavings.toFixed(2)}/semana`)}
-          ${renderStatsCard('Vapes Evitados', stats.vapesAvoided.toString(), 'unidades evitadas', 'from-pink-500 to-rose-500', `~${dailyVapesAvoided}/dia`)}
+          ${renderStatsCard('E-Liquido Evitado', `${stats.liquidAvoided.toFixed(1)} ml`, 'ml evitados', 'from-pink-500 to-rose-500', `~${dailyLiquidAvoided.toFixed(1)} ml/dia`)}
+          ${hasNicotineData ? renderStatsCard('Nicotina Evitada', `${stats.nicotineAvoided.toFixed(1)} mg`, 'mg evitados', 'from-amber-500 to-orange-500', `${stats.nicotineMgPerMl.toFixed(1)} mg/ml`) : ''}
         </div>
 
         ${currentMessage ? `
@@ -103,17 +111,29 @@ export function renderDashboard(appState) {
         ${renderRecommendations()}
 
         ${renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes, appState.user?.id)}
+
+        ${accountCreatedAt ? `
+          <p class="text-center text-xs text-gray-500 dark:text-slate-400 mt-8">
+            Conta criada em ${accountCreatedAt}
+          </p>
+        ` : ''}
       </div>
 
-      <div id="cravingsTab" class="tabContent hidden">
+      <div id="cravingsTab" class="${getTabContentClass(activeTab, 'cravings')}">
         ${renderCravingsTab(appState)}
       </div>
 
-      <div id="gameTab" class="tabContent hidden">
+      <div id="gameTab" class="${getTabContentClass(activeTab, 'game')}">
         ${renderWhackAVape()}
       </div>
 
-      <div id="aboutTab" class="tabContent hidden">
+      ${isAdmin ? `
+        <div id="adminTab" class="${getTabContentClass(activeTab, 'admin')}">
+          ${renderAdminPanel(appState.adminData)}
+        </div>
+      ` : ''}
+
+      <div id="aboutTab" class="${getTabContentClass(activeTab, 'about')}">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-8">
           <div class="flex items-center justify-center mb-6">
             <div class="h-12 w-12 text-green-600 mr-3 flex items-center justify-center">
@@ -131,7 +151,7 @@ export function renderDashboard(appState) {
         </div>
       </div>
 
-      <div id="supportTab" class="tabContent hidden">
+      <div id="supportTab" class="${getTabContentClass(activeTab, 'support')}">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-8">
           <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-2">Apoio ao Cliente</h2>
           <p class="text-gray-600 dark:text-slate-300 mb-6">Como podemos ajudar?</p>
@@ -217,7 +237,8 @@ function renderSetupModal(appState) {
   const defaultQuitDate = appState.userData?.quit_date || new Date().toISOString().split('T')[0];
   const defaultName = appState.userData?.name || '';
   const defaultWeeklyCost = appState.userData?.weekly_cost || 0;
-  const defaultVapesPerWeek = appState.userData?.vapes_per_week || 0;
+  const defaultLiquidMlPerWeek = appState.userData?.e_liquid_ml_per_week ?? appState.userData?.vapes_per_week ?? 0;
+  const defaultNicotineMgPerMl = appState.userData?.nicotine_mg_per_ml ?? '';
 
   return `
     <div id="setupModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -244,8 +265,13 @@ function renderSetupModal(appState) {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Vapes por Semana</label>
-            <input type="number" name="vapes_per_week" value="${defaultVapesPerWeek}" step="1" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
+            <label class="block text-sm font-medium text-gray-700 mb-1">ml de E-Liquido por Semana</label>
+            <input type="number" name="e_liquid_ml_per_week" value="${defaultLiquidMlPerWeek}" min="0.1" step="0.1" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nicotina do Vape (mg/ml)</label>
+            <input type="number" name="nicotine_mg_per_ml" value="${defaultNicotineMgPerMl}" min="0" step="0.1" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" />
           </div>
 
           <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all">
@@ -275,16 +301,28 @@ function renderStatsCard(title, value, subtitle, color, trend) {
   `;
 }
 
+function getTabButtonClass(activeTab, tabName) {
+  const base = 'tabBtn px-5 py-2 border-b-2 font-semibold hover:border-green-600';
+  return activeTab === tabName
+    ? `${base} border-green-600 text-green-600`
+    : `${base} border-transparent text-gray-600`;
+}
+
+function getTabContentClass(activeTab, tabName) {
+  return activeTab === tabName ? 'tabContent' : 'tabContent hidden';
+}
+
 function calculateStats(userData) {
-  if (!userData) return { daysFree: 0, moneySaved: 0, vapesAvoided: 0 };
+  if (!userData) return { daysFree: 0, moneySaved: 0, liquidAvoided: 0, nicotineAvoided: 0, nicotineMgPerMl: 0 };
 
   const today = new Date();
   const quitDate = new Date(userData.quit_date);
   const weeklyCost = Number(userData.weekly_cost) || 0;
-  const vapesPerWeek = Number(userData.vapes_per_week) || 0;
+  const liquidMlPerWeek = Number(userData.e_liquid_ml_per_week ?? userData.vapes_per_week) || 0;
+  const nicotineMgPerMl = Number(userData.nicotine_mg_per_ml) || 0;
 
   if (Number.isNaN(quitDate.getTime())) {
-    return { daysFree: 0, moneySaved: 0, vapesAvoided: 0 };
+    return { daysFree: 0, moneySaved: 0, liquidAvoided: 0, nicotineAvoided: 0, nicotineMgPerMl: 0 };
   }
 
   const diffTime = today.getTime() - quitDate.getTime();
@@ -292,9 +330,23 @@ function calculateStats(userData) {
 
   const weeksElapsed = daysFree / 7;
   const moneySaved = weeksElapsed * weeklyCost;
-  const vapesAvoided = Math.floor(weeksElapsed * vapesPerWeek);
+  const liquidAvoided = weeksElapsed * liquidMlPerWeek;
+  const nicotineAvoided = liquidAvoided * nicotineMgPerMl;
 
-  return { daysFree, moneySaved, vapesAvoided };
+  return { daysFree, moneySaved, liquidAvoided, nicotineAvoided, nicotineMgPerMl };
+}
+
+function formatAccountCreatedAt(createdAt) {
+  if (!createdAt) return '';
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toLocaleDateString('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 function findMotivationalMessage(daysFree) {
