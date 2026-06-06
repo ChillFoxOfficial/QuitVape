@@ -95,12 +95,12 @@ function renderAvaliacaoModal() {
 
         <form id="avaliacaoForm" class="space-y-5">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email do Utilizador</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email de registo do utilizador</label>
             <input
               type="email"
               name="alvo_email"
               class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-              placeholder="email@exemplo.com"
+              placeholder="email com que o utilizador criou a conta"
               required
             />
           </div>

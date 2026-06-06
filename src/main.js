@@ -60,13 +60,16 @@ function setTheme(theme) {
   }
 }
 
-function loadTheme() {
+function forceLightTheme() {
+  document.documentElement.classList.remove('dark');
+}
+
+function applyAuthenticatedTheme() {
   const savedTheme = localStorage.getItem(themeStorageKey);
   setTheme(savedTheme === 'dark' ? 'dark' : 'light');
 }
 
 async function initApp() {
-  loadTheme();
   if (!isSupabaseConfigured) {
     appState.loading = false;
     render();
@@ -227,6 +230,7 @@ function render() {
   }
 
   if (appState.loading) {
+    forceLightTheme();
     app.innerHTML = `
       <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
@@ -236,11 +240,13 @@ function render() {
   }
 
   if (!appState.user || appState.authMode === 'forgot' || appState.authMode === 'reset') {
+    forceLightTheme();
     app.innerHTML = renderLoginPage(appState);
     attachLoginHandlers();
     return;
   }
 
+  applyAuthenticatedTheme();
   app.innerHTML = `
     <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
       <nav class="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 shadow-md z-50">
@@ -536,6 +542,10 @@ function attachDashboardHandlers(appState) {
   document.querySelectorAll('.adminDeleteAvaliacaoBtn').forEach(btn => {
     btn.addEventListener('click', () => handleAdminDeleteAvaliacao(btn.dataset.id));
   });
+
+  document.querySelectorAll('.adminDeleteUserBtn').forEach(btn => {
+    btn.addEventListener('click', () => handleAdminDeleteUser(btn.dataset.id));
+  });
 }
 
 async function fetchAdminData(showLoading = false) {
@@ -592,6 +602,19 @@ async function handleAdminDeleteAvaliacao(avaliacaoId) {
   if (!confirm('Apagar esta avaliação?')) return;
 
   const { error } = await supabase.rpc('admin_delete_avaliacao', { target_id: avaliacaoId });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await fetchAdminData(false);
+}
+
+async function handleAdminDeleteUser(userId) {
+  if (!userId || !appState.isAdmin) return;
+  if (!confirm('Apagar este utilizador? Esta ação é irreversível.')) return;
+
+  const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
   if (error) {
     alert(error.message);
     return;
@@ -675,7 +698,7 @@ async function handleAvaliacaoSubmit(e) {
       .rpc('find_user_id_by_email', { target_email: alvoEmail });
 
     if (lookupError) throw lookupError;
-    if (!alvoId) throw new Error('Não foi encontrado nenhum utilizador com esse email');
+    if (!alvoId) throw new Error('Não foi encontrado nenhum utilizador com esse email de registo');
     if (alvoId === appState.user.id) throw new Error('Não podes avaliar o teu próprio perfil');
 
     const { error: insertError } = await supabase.from('avaliacoes').insert([{ id_autor: appState.user.id, id_alvo: alvoId, nota, comentario }]);

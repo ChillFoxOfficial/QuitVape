@@ -40,9 +40,16 @@ function renderUsersCard(users) {
       <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
         ${users.length ? users.map(user => `
           <div class="border border-gray-100 dark:border-slate-700 rounded-lg p-3">
-            <p class="font-semibold text-gray-800 dark:text-slate-100">${escapeHtml(user.name || 'Sem nome')}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400 break-all">${escapeHtml(user.email || 'Sem email')}</p>
-            <p class="text-xs text-gray-400 mt-1">Criado em ${formatDate(user.created_at)}</p>
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-semibold text-gray-800 dark:text-slate-100">${escapeHtml(user.name || 'Sem nome')}</p>
+                <p class="text-xs text-gray-500 dark:text-slate-400 break-all">${escapeHtml(user.email || 'Sem email')}</p>
+                <p class="text-xs text-gray-400 mt-1">Criado em ${formatDate(user.created_at)}</p>
+              </div>
+              <button class="adminDeleteUserBtn text-xs text-red-600 hover:text-red-700 font-semibold" data-id="${user.user_id}">
+                Apagar
+              </button>
+            </div>
           </div>
         `).join('') : '<p class="text-gray-500 dark:text-slate-300">Sem utilizadores.</p>'}
       </div>
