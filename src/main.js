@@ -144,12 +144,26 @@ async function fetchUserData(userId) {
       console.error('Error fetching user data:', error);
     } else if (data) {
       appState.userData = data;
+      const currentEmail = appState.user?.email?.toLowerCase() || '';
+      if (currentEmail && data.email !== currentEmail) {
+        const { error: emailUpdateError } = await supabase
+          .from('user_profiles')
+          .update({ email: currentEmail })
+          .eq('user_id', userId);
+
+        if (emailUpdateError) {
+          console.error('Error updating profile email:', emailUpdateError);
+        } else {
+          appState.userData = { ...data, email: currentEmail };
+        }
+      }
     } else {
       const user = supabase.auth.getUser ? (await supabase.auth.getUser()).data.user : null;
+      const defaultEmail = user?.email?.toLowerCase() || '';
       const defaultName = user?.user_metadata?.name || '';
       const { error: insertError, data: insertedData } = await supabase.from('user_profiles').insert([{
         user_id: userId,
-        email: user?.email || null,
+        email: defaultEmail,
         name: defaultName,
         quit_date: new Date().toISOString().split('T')[0],
         weekly_cost: 0,
@@ -608,17 +622,34 @@ async function handleSetupSubmit(e) {
 
     const { data: authData } = await supabase.auth.getUser();
     const email = authData?.user?.email || null;
-     
+       
     const { error } = await supabase
       .from('user_profiles')
-      .update({ name, email, quit_date, weekly_cost, e_liquid_ml_per_week, nicotine_mg_per_ml, setup_completed: true })
+      .update({ 
+        name, 
+        email: appState.user.email?.toLowerCase() || '', 
+        quit_date, 
+        weekly_cost, 
+        e_liquid_ml_per_week, 
+        nicotine_mg_per_ml, 
+        setup_completed: true 
+      })
       .eq('user_id', appState.user.id);
 
     if (error) throw error;
 
-    // Atualização do estado local para evitar ecrã branco
-    appState.userData = { ...appState.userData, name, email, quit_date, weekly_cost, e_liquid_ml_per_week, nicotine_mg_per_ml, setup_completed: true };
-    
+// Atualização do estado local para evitar ecrã branco
+    appState.userData = { 
+      ...appState.userData, 
+      name, 
+      email: appState.user?.email?.toLowerCase() || email || '', 
+      quit_date, 
+      weekly_cost, 
+      e_liquid_ml_per_week, 
+      nicotine_mg_per_ml, 
+      setup_completed: true 
+    };
+
     document.getElementById('setupModal').style.display = 'none';
     render();
   } catch (error) {

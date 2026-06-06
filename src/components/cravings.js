@@ -1,5 +1,36 @@
 import { supabase } from '../lib/supabase.js';
 
+const cravingFeedback = {
+  1: {
+    title: 'Apenas um pensamento passageiro. Est&aacute;s no bom caminho!',
+    advice: 'Mant&eacute;m o foco. Estes pequenos desejos s&atilde;o normais e desaparecem em poucos minutos.',
+    toneClass: 'bg-green-50 border-green-200 text-green-800',
+  },
+  2: {
+    title: 'Um pequeno desejo, mas tu &eacute;s mais forte.',
+    advice: 'Bebe um copo de &aacute;gua ou levanta-te para esticar as pernas. Vai passar r&aacute;pido!',
+    toneClass: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+  },
+  3: {
+    title: 'O desejo est&aacute; a tentar chamar a tua aten&ccedil;&atilde;o, mas tu tens o controlo.',
+    advice: 'Respira fundo 3 vezes. Tenta mudar de ambiente ou fazer uma pausa naquilo que te est&aacute; a causar stress.',
+    toneClass: 'bg-blue-50 border-blue-200 text-blue-800',
+  },
+  4: {
+    title: 'Aten&ccedil;&atilde;o! Este &eacute; um momento de aperto, mas n&atilde;o deites tudo a perder.',
+    advice: 'Distra&iacute; a mente agora. Vai jogar uma partida r&aacute;pida de Whack-a-Vape na aba Jogo.',
+    toneClass: 'bg-orange-50 border-orange-200 text-orange-800',
+    showGameAction: true,
+  },
+  5: {
+    title: 'Alerta SOS! Sabemos que est&aacute; a ser muito dif&iacute;cil agora, mas aguenta firme.',
+    advice: 'N&atilde;o cedas! Vai jogar Whack-a-Vape imediatamente at&eacute; a vontade acalmar, ou vai &agrave; aba Apoio ler os motivos pelos quais come&ccedil;aste esta jornada. Cada minuto que resistes &eacute; uma vit&oacute;ria enorme.',
+    toneClass: 'bg-red-50 border-red-200 text-red-800',
+    showGameAction: true,
+    showSupportAction: true,
+  },
+};
+
 export function renderCravingsTab(appState) {
   const recentCravings = appState.recentCravings || [];
 
@@ -46,8 +77,8 @@ export function renderCravingsTab(appState) {
         <p></p>
       </div>
 
-      <div id="cravingSuccess" class="hidden mt-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg" data-success>
-        <p>Desejo registado com sucesso!</p>
+      <div id="cravingSuccess" class="hidden mt-4 border px-4 py-3 rounded-lg" data-success>
+        <p class="font-bold">Desejo registado com sucesso!</p>
       </div>
     </div>
 
@@ -72,6 +103,71 @@ export function renderCravingsTab(appState) {
       `}
     </div>
   `;
+}
+
+function renderCravingsHistory(cravings) {
+  return cravings.length > 0 ? `
+    <div class="space-y-3 max-h-64 overflow-y-auto">
+      ${cravings.map(craving => `
+        <div class="border-l-4 border-green-500 bg-gray-50 p-4 rounded">
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">
+              Intensidade: ${craving.intensity}/5
+            </span>
+            <span class="text-sm text-gray-500">${new Date(craving.created_at).toLocaleDateString('pt-PT')}</span>
+          </div>
+          ${craving.notes ? `<p class="text-gray-700">${escapeHtml(craving.notes)}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  ` : `
+    <p class="text-gray-500 text-center py-8">Nenhum desejo registado ainda. Ã“timo sinal!</p>
+  `;
+}
+
+function refreshCravingsHistory(cravings) {
+  const historyCard = document.querySelector('#cravingsTab h3')?.parentElement;
+  if (historyCard) {
+    historyCard.innerHTML = `
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Hist&oacute;rico de Desejos</h3>
+      ${renderCravingsHistory(cravings)}
+    `;
+  }
+}
+
+function getCravingFeedback(intensity) {
+  return cravingFeedback[intensity] || cravingFeedback[3];
+}
+
+function openDashboardTab(tabName) {
+  const tabBtn = document.querySelector(`.tabBtn[data-tab="${tabName}"]`);
+  if (tabBtn) {
+    tabBtn.click();
+  }
+}
+
+function renderFeedbackMessage(intensity) {
+  const feedback = getCravingFeedback(intensity);
+
+  return `
+    <p class="font-bold mb-1">${feedback.title}</p>
+    <p class="text-sm leading-relaxed">${feedback.advice}</p>
+    ${feedback.showGameAction || feedback.showSupportAction ? `
+      <div class="flex flex-col sm:flex-row gap-2 mt-3">
+        ${feedback.showGameAction ? '<button type="button" id="openWhackAVapeFromCraving" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded-lg text-sm">Ir para o jogo</button>' : ''}
+        ${feedback.showSupportAction ? '<button type="button" id="openSupportFromCraving" class="bg-white hover:bg-gray-50 text-red-700 border border-red-200 font-semibold px-3 py-2 rounded-lg text-sm">Ir para apoio</button>' : ''}
+      </div>
+    ` : ''}
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 export async function attachCravingsHandlers(appState, userId) {
@@ -129,23 +225,34 @@ export async function attachCravingsHandlers(appState, userId) {
       intensityInput.value = '3';
 
       if (successDiv) {
+        const feedback = getCravingFeedback(intensity);
+        successDiv.className = `mt-4 border px-4 py-3 rounded-lg ${feedback.toneClass}`;
+        successDiv.innerHTML = renderFeedbackMessage(intensity);
         successDiv.style.display = 'block';
-        setTimeout(() => {
-          successDiv.style.display = 'none';
-        }, 2000);
+
+        document.getElementById('openWhackAVapeFromCraving')?.addEventListener('click', () => {
+          openDashboardTab('game');
+          if (window.startWhackAVapeGame) {
+            window.startWhackAVapeGame();
+          }
+        });
+
+        document.getElementById('openSupportFromCraving')?.addEventListener('click', () => {
+          openDashboardTab('support');
+        });
       }
 
       await fetchRecentCravings(appState, userId);
+      refreshCravingsHistory(appState.recentCravings || []);
 
-      setTimeout(() => {
-        const gameSection = document.getElementById('whackAVapeSection');
-        if (gameSection) {
-          gameSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        if (window.startWhackAVapeGame) {
-          window.startWhackAVapeGame();
-        }
-      }, 2500);
+      if (intensity >= 4) {
+        setTimeout(() => {
+          openDashboardTab('game');
+          if (window.startWhackAVapeGame) {
+            window.startWhackAVapeGame();
+          }
+        }, 3500);
+      }
     } catch (error) {
       if (errorDiv) {
         errorDiv.querySelector('p').textContent = error.message;

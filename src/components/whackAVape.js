@@ -6,7 +6,7 @@ export function renderWhackAVape() {
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-800 dark:text-slate-100">Whack-a-Vape</h2>
-          <p class="text-gray-600 dark:text-slate-300">Clique no emoji de vape antes que o tempo acabe.</p>
+          <p class="text-gray-600 dark:text-slate-300">Jogo desenhado para desviar o foco durante picos de vontade de fumar. Clica no fumo antes que o tempo acabe.</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <button
@@ -59,6 +59,12 @@ export function renderWhackAVape() {
       <div id="gameMessage" class="hidden text-center p-4 bg-green-50 dark:bg-emerald-900 border border-green-200 dark:border-emerald-700 rounded-lg mb-4">
         <p id="messageText" class="text-xl font-bold text-green-700 dark:text-emerald-100"></p>
         <p id="messageFinal" class="text-gray-600 dark:text-emerald-200 mt-2"></p>
+        <button
+          id="saveScoreBtn"
+          class="hidden mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-full text-sm transition-all"
+        >
+          Registar pontuação
+        </button>
       </div>
 
       ${renderLeaderboard([])}
@@ -71,8 +77,8 @@ function renderLeaderboard(entries) {
     ? entries.map((entry, index) => `
         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
           <div>
-            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${entry.name}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400">${entry.date}</p>
+            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${escapeHtml(entry.name)}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${escapeHtml(entry.date)}</p>
           </div>
           <span class="text-lg font-bold text-green-600 dark:text-emerald-300">${entry.score}</span>
         </div>
@@ -86,7 +92,7 @@ function renderLeaderboard(entries) {
           <h3 class="text-lg font-semibold text-gray-800 dark:text-slate-100">Leaderboard</h3>
           <p class="text-sm text-gray-500 dark:text-slate-400">Top 5 melhores pontuações</p>
         </div>
-        <span class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registos</span>
+        <span id="leaderboardCount" class="text-xs text-gray-500 dark:text-slate-400">${entries.length} registos</span>
       </div>
       <div id="leaderboardList" class="space-y-2">
         ${rows}
@@ -95,7 +101,9 @@ function renderLeaderboard(entries) {
   `;
 }
 
-async function loadLeaderboard() {
+export async function loadLeaderboard() {
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('whack_scores')
     .select('id, player_name, score, created_at')
@@ -110,45 +118,96 @@ async function loadLeaderboard() {
 
   return (data || []).map(entry => ({
     id: entry.id,
-    name: entry.player_name,
-    score: entry.score,
+    name: entry.player_name || 'Jogador',
+    score: entry.score || 0,
     date: new Date(entry.created_at).toLocaleDateString('pt-PT'),
   }));
 }
 
-async function addScoreToLeaderboard(score) {
-  const userId = window.whackAVapeUserId;
-  const name = window.whackAVapeUserName || 'Jogador';
+export async function loadRemoteLeaderboard() {
+  return loadLeaderboard();
+}
 
-  if (!userId) return loadLeaderboard();
+function saveLocalLeaderboard(entries) {
+  localStorage.setItem('whackAVapeLeaderboard', JSON.stringify(entries));
+}
+
+function addLocalScoreToLeaderboard(score) {
+  const name = window.whackAVapeUserName || 'Jogador';
+  let localEntries = [];
+  try {
+    localEntries = JSON.parse(localStorage.getItem('whackAVapeLeaderboard') || '[]');
+  } catch (e) {
+    localEntries = [];
+  }
+
+  localEntries.push({
+    name,
+    score,
+    date: new Date().toLocaleDateString('pt-PT'),
+  });
+
+  localEntries.sort((a, b) => b.score - a.score);
+  const topFive = localEntries.slice(0, 5);
+  saveLocalLeaderboard(topFive);
+  return topFive;
+}
+
+export async function saveRemoteScore(score) {
+  if (!supabase || !window.whackAVapeUserId) {
+    return addLocalScoreToLeaderboard(score);
+  }
+
+  const userId = window.whackAVapeUserId;
+  const playerName = window.whackAVapeUserName || 'Jogador';
 
   const { error } = await supabase
     .from('whack_scores')
-    .insert([{ user_id: userId, player_name: name, score }]);
+    .insert([{ user_id: userId, player_name: playerName, score }]);
 
   if (error) {
-    console.error('Error saving leaderboard score:', error);
+    console.error('Error saving Whack-a-Vape score:', error);
+    return addLocalScoreToLeaderboard(score);
   }
 
   return loadLeaderboard();
 }
 
-async function refreshLeaderboard() {
+export async function refreshLeaderboard(providedEntries = null) {
   const leaderboardList = document.getElementById('leaderboardList');
+  const leaderboardCount = document.getElementById('leaderboardCount');
   if (!leaderboardList) return;
-  leaderboardList.innerHTML = '<p class="text-gray-600 dark:text-slate-300">A carregar leaderboard...</p>';
-  const entries = await loadLeaderboard();
+
+  let entries = providedEntries;
+  if (!entries) {
+    leaderboardList.innerHTML = '<p class="text-gray-600 dark:text-slate-300">A carregar leaderboard...</p>';
+    entries = await loadLeaderboard();
+  }
+
+  if (leaderboardCount) {
+    leaderboardCount.textContent = `${entries.length} registos`;
+  }
+
   leaderboardList.innerHTML = entries.length
     ? entries.map((entry, index) => `
         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800">
           <div>
-            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${entry.name}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400">${entry.date}</p>
+            <p class="font-semibold text-gray-800 dark:text-slate-100">${index + 1}. ${escapeHtml(entry.name)}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${escapeHtml(entry.date)}</p>
           </div>
           <span class="text-lg font-bold text-green-600 dark:text-emerald-300">${entry.score}</span>
         </div>
       `).join('')
     : `<p class="text-gray-600 dark:text-slate-300">Sem pontuações ainda. Joga para entrar na leaderboard!</p>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 export function initWhackAVape() {
@@ -159,6 +218,8 @@ export function initWhackAVape() {
     highScore: parseInt(localStorage.getItem('whackAVapeHighScore') || '0'),
     currentVapeCell: null,
     timerInterval: null,
+    lastFinishedScore: null,
+    scoreRegistered: false,
   };
 
   const startBtn = document.getElementById('startGameBtn');
@@ -167,6 +228,7 @@ export function initWhackAVape() {
   const gameMessage = document.getElementById('gameMessage');
   const messageText = document.getElementById('messageText');
   const messageFinal = document.getElementById('messageFinal');
+  const saveScoreBtn = document.getElementById('saveScoreBtn');
   const timerDisplay = document.getElementById('timerDisplay');
   const scoreDisplay = document.getElementById('scoreDisplay');
   const highScoreDisplay = document.getElementById('highScoreDisplay');
@@ -179,6 +241,7 @@ export function initWhackAVape() {
 
   resetBtn.disabled = true;
   highScoreDisplay.textContent = gameState.highScore;
+  
   refreshLeaderboard();
 
   function showVape() {
@@ -215,7 +278,10 @@ export function initWhackAVape() {
     gameState.timeLeft = 60;
     gameState.score = 0;
     gameState.currentVapeCell = null;
+    gameState.lastFinishedScore = null;
+    gameState.scoreRegistered = false;
     gameMessage.classList.add('hidden');
+    saveScoreBtn?.classList.add('hidden');
     startBtn.disabled = true;
     resetBtn.disabled = false;
     updateUI();
@@ -225,7 +291,7 @@ export function initWhackAVape() {
       if (gameState.isRunning) {
         showVape();
       }
-    }, 1400);
+    }, 2000);
 
     gameState.timerInterval = setInterval(() => {
       gameState.timeLeft--;
@@ -257,7 +323,13 @@ export function initWhackAVape() {
       messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
     }
 
-    addScoreToLeaderboard(gameState.score).then(() => refreshLeaderboard());
+    gameState.lastFinishedScore = gameState.score;
+    gameState.scoreRegistered = false;
+    if (saveScoreBtn) {
+      saveScoreBtn.disabled = false;
+      saveScoreBtn.textContent = 'Registar pontuação';
+      saveScoreBtn.classList.remove('hidden');
+    }
 
     gameMessage.classList.remove('hidden');
     startBtn.disabled = false;
@@ -266,13 +338,41 @@ export function initWhackAVape() {
 
   startBtn.addEventListener('click', startGame);
 
+  saveScoreBtn?.addEventListener('click', async () => {
+    if (gameState.lastFinishedScore === null || gameState.scoreRegistered) return;
+
+    saveScoreBtn.disabled = true;
+    saveScoreBtn.textContent = 'A registar...';
+
+    try {
+      const entries = await saveRemoteScore(gameState.lastFinishedScore);
+      if (!entries) {
+        throw new Error('Leaderboard indisponivel');
+      }
+
+      refreshLeaderboard(entries);
+
+      gameState.scoreRegistered = true;
+      saveScoreBtn.textContent = 'Pontuação registada';
+      messageFinal.textContent = `${messageFinal.textContent} | Pontuação registada`;
+    } catch (error) {
+      console.error('Error registering Whack-a-Vape score:', error);
+      saveScoreBtn.disabled = false;
+      saveScoreBtn.textContent = 'Tentar novamente';
+      messageFinal.textContent = `${messageFinal.textContent} | Não foi possível registar. Tenta novamente.`;
+    }
+  });
+
   resetBtn.addEventListener('click', () => {
     gameState.isRunning = false;
     if (gameState.timerInterval) clearInterval(gameState.timerInterval);
     gameState.timeLeft = 60;
     gameState.score = 0;
     gameState.currentVapeCell = null;
+    gameState.lastFinishedScore = null;
+    gameState.scoreRegistered = false;
     gameMessage.classList.add('hidden');
+    saveScoreBtn?.classList.add('hidden');
     cells.forEach(cell => {
       cell.querySelector('.vapeEmoji').classList.add('hidden');
     });
