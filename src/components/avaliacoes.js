@@ -11,7 +11,7 @@ export function renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes,
           Avaliações
         </h3>
         <button id="openAvaliacaoBtn" class="bg-gradient-to-r from-green-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-green-700 hover:to-blue-700 transition-all">
-          Avaliar Utilizador
+          Avaliar Website
         </button>
       </div>
 
@@ -89,7 +89,7 @@ function renderAvaliacaoModal() {
     <div id="avaliacaoModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-gray-800">Avaliar Utilizador</h2>
+          <h2 class="text-2xl font-bold text-gray-800">Avaliar Website</h2>
           <button id="closeAvaliacaoModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
         </div>
 
