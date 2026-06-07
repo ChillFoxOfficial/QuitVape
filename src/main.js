@@ -117,9 +117,15 @@ async function initApp() {
     appState.user = session?.user || null;
     appState.isAdmin = isAdminEmail(appState.user?.email);
     if (appState.user) {
+      const currentUserId = appState.user.id; // capturar antes das operações async
       await fetchUserData(appState.user.id);
       await fetchAvaliacoes(appState.user.id);
       await fetchRecentCravings(appState, appState.user.id);
+      // Só renderizar se o utilizador não mudou durante os fetches
+      // (ex: logout clicado enquanto TOKEN_REFRESHED estava a correr)
+      if (appState.user?.id === currentUserId) {
+        render();
+      }
     } else {
       appState.userData = null;
       appState.avaliacoes = [];
@@ -130,8 +136,8 @@ async function initApp() {
       appState.adminData = { users: [], avaliacoes: [], scores: [], loading: false, error: '' };
       appState.activeTab = 'dashboard';
       appState.loading = false;
+      render();
     }
-    render();
   });
 }
 
@@ -449,14 +455,24 @@ function attachDashboardHandlers(appState) {
       try {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        // Sucesso: onAuthStateChange (SIGNED_OUT) trata do reset e do render()
       } catch (error) {
         console.error('Logout error:', error);
-      } finally {
+        // Fallback para falhas de rede: limpar estado manualmente
         appState.user = null;
         appState.userData = null;
-        logoutBtn.disabled = false;
+        appState.avaliacoes = [];
+        appState.mediaNotas = 0;
+        appState.totalAvaliacoes = 0;
+        appState.recentCravings = [];
+        appState.isAdmin = false;
+        appState.adminData = { users: [], avaliacoes: [], scores: [], loading: false, error: '' };
+        appState.activeTab = 'dashboard';
+        appState.loading = false;
         render();
       }
+      // Sem finally: em caso de sucesso o DOM é substituído pelo onAuthStateChange;
+      // o estado do disabled não importa pois o botão deixa de existir.
     });
   }
 
