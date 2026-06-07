@@ -97,7 +97,7 @@ async function initApp() {
 
   if (appState.user) {
     await fetchUserData(appState.user.id);
-    await fetchAvaliacoes(appState.user.id);
+    await fetchAvaliacoes();
     await fetchRecentCravings(appState, appState.user.id);
   } else {
     appState.loading = false;
@@ -119,7 +119,7 @@ async function initApp() {
     if (appState.user) {
       const currentUserId = appState.user.id; // capturar antes das operações async
       await fetchUserData(appState.user.id);
-      await fetchAvaliacoes(appState.user.id);
+      await fetchAvaliacoes();
       await fetchRecentCravings(appState, appState.user.id);
       // Só renderizar se o utilizador não mudou durante os fetches
       // (ex: logout clicado enquanto TOKEN_REFRESHED estava a correr)
@@ -195,12 +195,11 @@ async function fetchUserData(userId) {
   }
 }
 
-async function fetchAvaliacoes(userId) {
+async function fetchAvaliacoes() {
   try {
     const { data, error } = await supabase
       .from('avaliacoes')
-      .select('id, id_autor, id_alvo, nota, comentario, created_at, autor:user_profiles!avaliacoes_id_autor_fkey(name)')
-      .eq('id_alvo', userId)
+      .select('id, id_autor, nota, comentario, created_at, autor:user_profiles!avaliacoes_id_autor_fkey(name)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -548,6 +547,20 @@ function attachDashboardHandlers(appState) {
   const avaliacaoForm = document.getElementById('avaliacaoForm');
   if (avaliacaoForm) avaliacaoForm.addEventListener('submit', handleAvaliacaoSubmit);
 
+  document.querySelectorAll('.deleteAvaliacaoBtn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Apagar a tua avaliação do website?')) return;
+      const { error } = await supabase
+        .from('avaliacoes')
+        .delete()
+        .eq('id', btn.dataset.id)
+        .eq('id_autor', appState.user.id);
+      if (error) { alert(error.message); return; }
+      await fetchAvaliacoes();
+      render();
+    });
+  });
+
   const refreshAdminBtn = document.getElementById('refreshAdminBtn');
   if (refreshAdminBtn) refreshAdminBtn.addEventListener('click', () => fetchAdminData(true));
 
@@ -701,30 +714,51 @@ async function handleSetupSubmit(e) {
 async function handleAvaliacaoSubmit(e) {
   e.preventDefault();
   const form = e.target;
-  const alvoEmail = form.alvo_email?.value?.toLowerCase()?.trim() || "";
+  const meuEmail = form.meu_email?.value?.toLowerCase()?.trim() || '';
   const nota = parseInt(form.nota.value);
   const comentario = form.comentario.value.trim();
+  const errorDiv = document.getElementById('avaliacaoError');
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  if (errorDiv) { errorDiv.style.display = 'none'; }
+  if (submitBtn) submitBtn.disabled = true;
+
+  const showError = (msg) => {
+    if (errorDiv) {
+      errorDiv.querySelector('p').textContent = msg;
+      errorDiv.style.display = 'block';
+    } else {
+      alert(msg);
+    }
+  };
 
   try {
-    if (!alvoEmail.includes('@')) throw new Error('Email inválido');
-    
-    if (!nota || nota < 1 || nota > 5) throw new Error('Selecione uma nota');
+    if (!meuEmail.includes('@')) throw new Error('Insere um email válido');
 
-    const { data: alvoId, error: lookupError } = await supabase
-      .rpc('find_user_id_by_email', { target_email: alvoEmail });
+    const contaEmail = appState.user?.email?.toLowerCase() || '';
+    if (meuEmail !== contaEmail) throw new Error('O email não corresponde à conta com que entraste');
 
-    if (lookupError) throw lookupError;
-    if (!alvoId) throw new Error('Não foi encontrado nenhum utilizador com esse email de registo');
-    if (alvoId === appState.user.id) throw new Error('Não podes avaliar o teu próprio perfil');
+    if (!nota || nota < 1 || nota > 5) throw new Error('Seleciona uma nota de 1 a 5 estrelas');
 
-    const { error: insertError } = await supabase.from('avaliacoes').insert([{ id_autor: appState.user.id, id_alvo: alvoId, nota, comentario }]);
-    if (insertError) throw insertError;
-    
+    const { error: insertError } = await supabase.from('avaliacoes').insert([{
+      id_autor: appState.user.id,
+      id_alvo: appState.user.id,
+      nota,
+      comentario,
+    }]);
+
+    if (insertError) {
+      if (insertError.code === '23505') throw new Error('Já submeteste uma avaliação do website. Elimina a atual para submeter uma nova.');
+      throw insertError;
+    }
+
     document.getElementById('avaliacaoModal').style.display = 'none';
-    await fetchAvaliacoes(appState.user.id);
+    await fetchAvaliacoes();
     render();
   } catch (error) {
-    alert(error.message);
+    showError(error.message);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
 }
 

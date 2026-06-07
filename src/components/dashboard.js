@@ -110,7 +110,7 @@ export function renderDashboard(appState) {
 
         ${renderRecommendations()}
 
-        ${renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes, appState.user?.id)}
+        ${renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes, appState.user?.id, appState.userData?.email || appState.user?.email || '')}
 
         ${accountCreatedAt ? `
           <p class="text-center text-xs text-gray-500 dark:text-slate-400 mt-8">
