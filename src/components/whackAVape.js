@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase.js';
+
+
 const gameState = {
   isRunning: false,
   timeLeft: 60,
@@ -221,7 +223,7 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-export function initWhackAVape() {
+export function initWhackAVape() {  // gameState é agora global (declarado no topo do ficheiro) para sobreviver a render()
 
   const startBtn = document.getElementById('startGameBtn');
   const resetBtn = document.getElementById('resetGameBtn');
@@ -350,13 +352,9 @@ export function initWhackAVape() {
     if (_startBtn) { _startBtn.disabled = false; _startBtn.textContent = 'Jogar Novamente'; }
   }
 
-  // Expor funções no window para o event delegation do main.js
-  window.startWhackAVapeGame = startGame;
-  window.resetWhackAVapeGame = resetGame;
-  window.saveWhackAVapeScore = saveScore;
-  window.whackAVapeCellClick = cellClick;
+  window._whackStartGame = startGame;
+  window._whackResetGame = resetGame;
 
-  // Listeners nas células (são muitas e estáticas dentro do jogo — delegation via window)
   cells.forEach(cell => {
     cell.addEventListener('click', () => cellClick(parseInt(cell.dataset.cell, 10)));
   });
@@ -427,7 +425,10 @@ function cellClick(cellIndex) {
     const cell = gameBoard?.querySelector(`[data-cell="${cellIndex}"]`);
     if (cell) cell.querySelector('.vapeEmoji')?.classList.add('hidden');
     gameState.currentVapeCell = null;
-    // showVape needs to be called - expose it
     window._whackShowVape && window._whackShowVape();
   }
 }
+window.startWhackAVapeGame  = () => { const f = window._whackStartGame;  if (f) f(); };
+window.resetWhackAVapeGame  = () => { const f = window._whackResetGame;  if (f) f(); };
+window.saveWhackAVapeScore  = saveScore;
+window.whackAVapeCellClick  = cellClick;
