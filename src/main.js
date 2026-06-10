@@ -86,10 +86,13 @@ async function initApp() {
       appState.user = session.user;
       appState.isAdmin = isAdminEmail(session.user?.email);
       if (isRecovery) {
-        // Modo reset: mostrar formulário de nova password sem carregar dados
         appState.authMode = 'reset';
         appState.loading = false;
         render();
+        fetchUserData(session.user.id).then(() => {
+          fetchAvaliacoes(session.user.id);
+          fetchRecentCravings(appState, session.user.id);
+        });
         return;
       }
       // isSignup (verificação de email): carregar perfil existente antes de renderizar
@@ -134,9 +137,7 @@ async function initApp() {
       appState.user = session?.user || null;
       appState.isAdmin = isAdminEmail(appState.user?.email);
       appState.authMode = 'login';
-      // Se já temos os dados do utilizador em memória, não precisamos de refazer fetch
-      // (evita sobrescrever setup_completed ou criar perfil duplicado)
-      if (!appState.userData && appState.user) {
+      if (appState.user) {
         await fetchUserData(appState.user.id);
         await fetchAvaliacoes(appState.user.id);
         await fetchRecentCravings(appState, appState.user.id);
