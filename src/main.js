@@ -97,7 +97,7 @@ async function initApp() {
 
   if (appState.user) {
     await fetchUserData(appState.user.id);
-    await fetchAvaliacoes();
+    await fetchAvaliacoes(appState.user.id);
     await fetchRecentCravings(appState, appState.user.id);
   } else {
     appState.loading = false;
@@ -119,7 +119,7 @@ async function initApp() {
     if (appState.user) {
       const currentUserId = appState.user.id; // capturar antes das operações async
       await fetchUserData(appState.user.id);
-      await fetchAvaliacoes();
+      await fetchAvaliacoes(appState.user.id);
       await fetchRecentCravings(appState, appState.user.id);
       // Só renderizar se o utilizador não mudou durante os fetches
       // (ex: logout clicado enquanto TOKEN_REFRESHED estava a correr)
@@ -195,11 +195,12 @@ async function fetchUserData(userId) {
   }
 }
 
-async function fetchAvaliacoes() {
+async function fetchAvaliacoes(userId) {
   try {
     const { data, error } = await supabase
       .from('avaliacoes')
-      .select('id, id_autor, nota, comentario, created_at, autor:user_profiles!avaliacoes_id_autor_fkey(name)')
+      .select('id, id_autor, id_alvo, nota, comentario, created_at, autor:user_profiles!avaliacoes_id_autor_fkey(name)')
+      .eq('id_alvo', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -547,20 +548,6 @@ function attachDashboardHandlers(appState) {
   const avaliacaoForm = document.getElementById('avaliacaoForm');
   if (avaliacaoForm) avaliacaoForm.addEventListener('submit', handleAvaliacaoSubmit);
 
-  document.querySelectorAll('.deleteAvaliacaoBtn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('Apagar a tua avaliação do website?')) return;
-      const { error } = await supabase
-        .from('avaliacoes')
-        .delete()
-        .eq('id', btn.dataset.id)
-        .eq('id_autor', appState.user.id);
-      if (error) { alert(error.message); return; }
-      await fetchAvaliacoes();
-      render();
-    });
-  });
-
   const refreshAdminBtn = document.getElementById('refreshAdminBtn');
   if (refreshAdminBtn) refreshAdminBtn.addEventListener('click', () => fetchAdminData(true));
 
@@ -714,7 +701,7 @@ async function handleSetupSubmit(e) {
 async function handleAvaliacaoSubmit(e) {
   e.preventDefault();
   const form = e.target;
-  const meuEmail = form.meu_email?.value?.toLowerCase()?.trim() || '';
+  const meuEmail = form.alvo_email?.value?.toLowerCase()?.trim() || "";
   const nota = parseInt(form.nota.value);
   const comentario = form.comentario.value.trim();
   const errorDiv = document.getElementById('avaliacaoError');
@@ -753,7 +740,7 @@ async function handleAvaliacaoSubmit(e) {
     }
 
     document.getElementById('avaliacaoModal').style.display = 'none';
-    await fetchAvaliacoes();
+    await fetchAvaliacoes(appState.user.id);
     render();
   } catch (error) {
     showError(error.message);
