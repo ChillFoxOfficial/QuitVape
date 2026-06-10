@@ -463,30 +463,7 @@ async function handleResetPassword(e) {
 function attachDashboardHandlers(appState) {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      logoutBtn.disabled = true;
-      try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        // Sucesso: onAuthStateChange (SIGNED_OUT) trata do reset e do render()
-      } catch (error) {
-        console.error('Logout error:', error);
-        // Fallback para falhas de rede: limpar estado manualmente
-        appState.user = null;
-        appState.userData = null;
-        appState.avaliacoes = [];
-        appState.mediaNotas = 0;
-        appState.totalAvaliacoes = 0;
-        appState.recentCravings = [];
-        appState.isAdmin = false;
-        appState.adminData = { users: [], avaliacoes: [], scores: [], loading: false, error: '' };
-        appState.activeTab = 'dashboard';
-        appState.loading = false;
-        render();
-      }
-      // Sem finally: em caso de sucesso o DOM é substituído pelo onAuthStateChange;
-      // o estado do disabled não importa pois o botão deixa de existir.
-    });
+    logoutBtn.addEventListener('click', handleLogout);
   }
 
   const tabBtns = document.querySelectorAll('.tabBtn');
@@ -643,33 +620,10 @@ async function handleAdminDeleteUser(userId) {
   if (!userId || !appState.isAdmin) return;
   if (!confirm('Apagar este utilizador? Esta ação é irreversível.')) return;
 
-  const { error: rpcError } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
-  if (rpcError) {
-    alert(rpcError.message);
+  const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
+  if (error) {
+    alert(error.message);
     return;
-  }
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ target_user_id: userId }),
-      }
-    );
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.warn('Edge Function aviso:', errData.error || response.statusText);
-    }
-  } catch (edgeFnError) {
-    console.warn('Edge Function não disponível:', edgeFnError.message);
   }
 
   await fetchAdminData(false);
@@ -713,7 +667,6 @@ async function handleSetupSubmit(e) {
 
     if (error) throw error;
 
-// Atualização do estado local para evitar ecrã branco
     appState.userData = { 
       ...appState.userData, 
       name, 
@@ -784,5 +737,46 @@ async function handleAvaliacaoSubmit(e) {
     if (submitBtn) submitBtn.disabled = false;
   }
 }
+let _logoutInProgress = false;
+
+async function handleLogout() {
+  if (_logoutInProgress) return;
+  _logoutInProgress = true;
+
+  const btn = document.getElementById('logoutBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    // Sucesso: onAuthStateChange (SIGNED_OUT) limpa o estado e chama render()
+  } catch (err) {
+    console.error('Logout error:', err);
+    // Fallback para falhas de rede: limpar estado manualmente
+    appState.user = null;
+    appState.userData = null;
+    appState.avaliacoes = [];
+    appState.mediaNotas = 0;
+    appState.totalAvaliacoes = 0;
+    appState.recentCravings = [];
+    appState.isAdmin = false;
+    appState.adminData = { users: [], avaliacoes: [], scores: [], loading: false, error: '' };
+    appState.activeTab = 'dashboard';
+    appState.loading = false;
+    render();
+  } finally {
+    _logoutInProgress = false;
+  }
+}
+
+// Registar UMA VEZ no #app — sobrevive a qualquer innerHTML
+document.addEventListener('DOMContentLoaded', () => {
+  const app = document.getElementById('app');
+  if (app) {
+    app.addEventListener('click', (e) => {
+      if (e.target.closest('#logoutBtn')) handleLogout();
+    });
+  }
+});
 
 initApp();
