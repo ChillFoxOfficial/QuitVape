@@ -282,10 +282,14 @@ export function initWhackAVape() {
     gameState.currentVapeCell = null;
     gameState.lastFinishedScore = null;
     gameState.scoreRegistered = false;
-    gameMessage.classList.add('hidden');
-    saveScoreBtn?.classList.add('hidden');
-    startBtn.disabled = true;
-    resetBtn.disabled = false;
+    const _gameMessage  = document.getElementById('gameMessage');
+    const _saveScoreBtn = document.getElementById('saveScoreBtn');
+    const _startBtn     = document.getElementById('startGameBtn');
+    const _resetBtn     = document.getElementById('resetGameBtn');
+    if (_gameMessage) _gameMessage.classList.add('hidden');
+    if (_saveScoreBtn) _saveScoreBtn.classList.add('hidden');
+    if (_startBtn) _startBtn.disabled = true;
+    if (_resetBtn) _resetBtn.disabled = false;
     updateUI();
 
     showVape();
@@ -310,32 +314,40 @@ export function initWhackAVape() {
     clearInterval(gameState.timerInterval);
     clearInterval(gameState.vapeInterval);
 
-    cells.forEach(cell => {
-      cell.querySelector('.vapeEmoji').classList.add('hidden');
+    const _gameMessage   = document.getElementById('gameMessage');
+    const _messageText   = document.getElementById('messageText');
+    const _messageFinal  = document.getElementById('messageFinal');
+    const _saveScoreBtn  = document.getElementById('saveScoreBtn');
+    const _startBtn      = document.getElementById('startGameBtn');
+    const _highScore     = document.getElementById('highScoreDisplay');
+    const _cells         = document.querySelectorAll('.gameCell');
+
+    _cells.forEach(cell => {
+      const e = cell.querySelector('.vapeEmoji');
+      if (e) e.classList.add('hidden');
     });
 
     if (gameState.score > gameState.highScore) {
       gameState.highScore = gameState.score;
       localStorage.setItem('whackAVapeHighScore', gameState.highScore);
-      highScoreDisplay.textContent = gameState.highScore;
-      messageText.textContent = '🎉 Novo Recorde!';
-      messageFinal.textContent = `Pontuação: ${gameState.score}`;
+      if (_highScore) _highScore.textContent = gameState.highScore;
+      if (_messageText) _messageText.textContent = '🎉 Novo Recorde!';
+      if (_messageFinal) _messageFinal.textContent = `Pontuação: ${gameState.score}`;
     } else {
-      messageText.textContent = '✅ Sucesso! Desejo Derrotado';
-      messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
+      if (_messageText) _messageText.textContent = '✅ Sucesso! Desejo Derrotado';
+      if (_messageFinal) _messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
     }
 
     gameState.lastFinishedScore = gameState.score;
     gameState.scoreRegistered = false;
-    if (saveScoreBtn) {
-      saveScoreBtn.disabled = false;
-      saveScoreBtn.textContent = 'Registar pontuação';
-      saveScoreBtn.classList.remove('hidden');
-    }
 
-    gameMessage.classList.remove('hidden');
-    startBtn.disabled = false;
-    startBtn.textContent = 'Jogar Novamente';
+    if (_saveScoreBtn) {
+      _saveScoreBtn.disabled = false;
+      _saveScoreBtn.textContent = 'Registar pontuação';
+      _saveScoreBtn.classList.remove('hidden');
+    }
+    if (_gameMessage) _gameMessage.classList.remove('hidden');
+    if (_startBtn) { _startBtn.disabled = false; _startBtn.textContent = 'Jogar Novamente'; }
   }
 
   // Expor funções no window para o event delegation do main.js

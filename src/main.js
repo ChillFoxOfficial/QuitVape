@@ -695,6 +695,25 @@ async function handleAvaliacaoSubmit(e) {
     if (submitBtn) submitBtn.disabled = false;
   }
 }
+
+async function handleDeleteMinhaAvaliacao(avaliacaoId) {
+  if (!avaliacaoId || !appState.user) return;
+  if (!confirm('Eliminar a tua avaliação?')) return;
+
+  const { error } = await supabase
+    .from('avaliacoes')
+    .delete()
+    .eq('id', avaliacaoId)
+    .eq('id_autor', appState.user.id); // garantia extra: só apaga a sua
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await fetchAvaliacoes(appState.user.id);
+  render();
+}
 let _logoutInProgress = false;
 
 async function handleLogout() {
@@ -754,18 +773,21 @@ function setupAppDelegation() {
       return;
     }
 
+    // Abrir modal de avaliação
     if (t.closest('#openAvaliacaoBtn')) {
       const modal = document.getElementById('avaliacaoModal');
       if (modal) modal.style.display = 'flex';
       return;
     }
 
+    // Fechar modal de avaliação
     if (t.closest('#closeAvaliacaoModal')) {
       const modal = document.getElementById('avaliacaoModal');
       if (modal) modal.style.display = 'none';
       return;
     }
 
+    // Botão de tema
     if (t.closest('#themeToggleBtn')) {
       const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
       setTheme(nextTheme);
@@ -774,6 +796,7 @@ function setupAppDelegation() {
       return;
     }
 
+    // Tabs de navegação
     const tabBtn = t.closest('.tabBtn');
     if (tabBtn) {
       const tabName = tabBtn.dataset.tab;
@@ -792,11 +815,13 @@ function setupAppDelegation() {
       return;
     }
 
+    // Botão refresh do admin
     if (t.closest('#refreshAdminBtn')) {
       fetchAdminData(true);
       return;
     }
 
+    // ── Whack-a-Vape ─────────────────────────────────────────────────────────
     if (t.closest('#startGameBtn')) {
       window.startWhackAVapeGame && window.startWhackAVapeGame();
       return;
@@ -809,6 +834,7 @@ function setupAppDelegation() {
       window.saveWhackAVapeScore && window.saveWhackAVapeScore();
       return;
     }
+    // Células do jogo
     const gameCell = t.closest('.gameCell');
     if (gameCell) {
       window.whackAVapeCellClick && window.whackAVapeCellClick(parseInt(gameCell.dataset.cell, 10));
@@ -819,12 +845,14 @@ function setupAppDelegation() {
     const starBtn = t.closest('.starBtn');
     if (starBtn) {
       const val = parseInt(starBtn.dataset.value);
+      // Atualizar o input hidden com a nota escolhida
       const notaInput = document.querySelector('#avaliacaoForm input[name="nota"]');
       if (notaInput) notaInput.value = val;
       document.querySelectorAll('.starBtn').forEach(s => {
         const svg = s.querySelector('svg');
         if (svg) svg.style.color = parseInt(s.dataset.value) <= val ? '#facc15' : '#d1d5db';
       });
+      // Atualizar o label de nota
       const notaLabel = document.getElementById('notaLabel');
       if (notaLabel) {
         const labels = ['', '1 - Muito mau', '2 - Mau', '3 - Razoável', '4 - Bom', '5 - Excelente'];
@@ -845,6 +873,13 @@ function setupAppDelegation() {
     const deleteAvaliacaoBtn = t.closest('.adminDeleteAvaliacaoBtn');
     if (deleteAvaliacaoBtn) {
       handleAdminDeleteAvaliacao(deleteAvaliacaoBtn.dataset.id);
+      return;
+    }
+
+    // Apagar a própria avaliação (utilizador comum)
+    const deleteMinhaBtn = t.closest('.deleteAvaliacaoBtn');
+    if (deleteMinhaBtn) {
+      handleDeleteMinhaAvaliacao(deleteMinhaBtn.dataset.id);
       return;
     }
 
