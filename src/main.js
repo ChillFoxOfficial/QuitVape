@@ -461,98 +461,12 @@ async function handleResetPassword(e) {
 }
 
 function attachDashboardHandlers(appState) {
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', handleLogout);
-  }
-
-  const tabBtns = document.querySelectorAll('.tabBtn');
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tabName = btn.dataset.tab;
-      appState.activeTab = tabName;
-      tabBtns.forEach(b => {
-        b.classList.remove('border-green-600', 'text-green-600');
-        b.classList.add('border-transparent', 'text-gray-600');
-      });
-      btn.classList.add('border-green-600', 'text-green-600');
-      document.querySelectorAll('.tabContent').forEach(tab => tab.classList.add('hidden'));
-      document.getElementById(`${tabName}Tab`).classList.remove('hidden');
-      if (tabName === 'cravings') attachCravingsHandlers(appState, appState.user.id);
-      if (tabName === 'admin') fetchAdminData(true);
-    });
-  });
-
   const themeBtn = document.getElementById('themeToggleBtn');
   if (themeBtn) {
     themeBtn.textContent = document.documentElement.classList.contains('dark') ? 'Modo Claro' : 'Modo Escuro';
-    themeBtn.addEventListener('click', () => {
-      const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-      setTheme(nextTheme);
-    });
   }
-
-  const setupBtn = document.getElementById('setupBtn');
-  if (setupBtn) {
-    setupBtn.addEventListener('click', () => {
-      const modal = document.getElementById('setupModal');
-      if (modal) modal.style.display = 'flex';
-    });
-  }
-
-  const closeModalBtn = document.getElementById('closeModal');
-  if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', () => {
-      const modal = document.getElementById('setupModal');
-      if (modal) modal.style.display = 'none';
-    });
-  }
-
-  const setupForm = document.getElementById('setupForm');
-  if (setupForm) setupForm.addEventListener('submit', handleSetupSubmit);
-
-  const openAvaliacaoBtn = document.getElementById('openAvaliacaoBtn');
-  if (openAvaliacaoBtn) {
-    openAvaliacaoBtn.addEventListener('click', () => {
-      document.getElementById('avaliacaoModal').style.display = 'flex';
-    });
-  }
-
-  const closeAvaliacaoModal = document.getElementById('closeAvaliacaoModal');
-  if (closeAvaliacaoModal) {
-    closeAvaliacaoModal.addEventListener('click', () => {
-      document.getElementById('avaliacaoModal').style.display = 'none';
-    });
-  }
-
-  const starBtns = document.querySelectorAll('.starBtn');
-  const notaInput = document.querySelector('input[name="nota"]');
-  starBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const val = btn.dataset.value;
-      if (notaInput) notaInput.value = val;
-      starBtns.forEach(s => s.querySelector('svg').style.color = s.dataset.value <= val ? '#facc15' : '#d1d5db');
-    });
-  });
-
-  const avaliacaoForm = document.getElementById('avaliacaoForm');
-  if (avaliacaoForm) avaliacaoForm.addEventListener('submit', handleAvaliacaoSubmit);
-
-  const refreshAdminBtn = document.getElementById('refreshAdminBtn');
-  if (refreshAdminBtn) refreshAdminBtn.addEventListener('click', () => fetchAdminData(true));
-
-  document.querySelectorAll('.adminDeleteScoreBtn').forEach(btn => {
-    btn.addEventListener('click', () => handleAdminDeleteScore(btn.dataset.id));
-  });
-
-  document.querySelectorAll('.adminDeleteAvaliacaoBtn').forEach(btn => {
-    btn.addEventListener('click', () => handleAdminDeleteAvaliacao(btn.dataset.id));
-  });
-
-  document.querySelectorAll('.adminDeleteUserBtn').forEach(btn => {
-    btn.addEventListener('click', () => handleAdminDeleteUser(btn.dataset.id));
-  });
 }
+
 
 async function fetchAdminData(showLoading = false) {
   if (!appState.isAdmin) return;
@@ -769,14 +683,128 @@ async function handleLogout() {
   }
 }
 
-// Registar UMA VEZ no #app — sobrevive a qualquer innerHTML
-document.addEventListener('DOMContentLoaded', () => {
+function setupAppDelegation() {
   const app = document.getElementById('app');
-  if (app) {
-    app.addEventListener('click', (e) => {
-      if (e.target.closest('#logoutBtn')) handleLogout();
-    });
-  }
-});
+  if (!app) return;
 
+  app.addEventListener('click', (e) => {
+    const t = e.target;
+
+    // Botão Sair
+    if (t.closest('#logoutBtn')) {
+      handleLogout();
+      return;
+    }
+
+    // Botão Abrir modal de configuração/atualização
+    if (t.closest('#setupBtn')) {
+      const modal = document.getElementById('setupModal');
+      if (modal) modal.style.display = 'flex';
+      return;
+    }
+
+    // Fechar modal de configuração
+    if (t.closest('#closeModal')) {
+      const modal = document.getElementById('setupModal');
+      if (modal) modal.style.display = 'none';
+      return;
+    }
+
+    // Abrir modal de avaliação
+    if (t.closest('#openAvaliacaoBtn')) {
+      const modal = document.getElementById('avaliacaoModal');
+      if (modal) modal.style.display = 'flex';
+      return;
+    }
+
+    // Fechar modal de avaliação
+    if (t.closest('#closeAvaliacaoModal')) {
+      const modal = document.getElementById('avaliacaoModal');
+      if (modal) modal.style.display = 'none';
+      return;
+    }
+
+    // Botão de tema
+    if (t.closest('#themeToggleBtn')) {
+      const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+      setTheme(nextTheme);
+      const btn = document.getElementById('themeToggleBtn');
+      if (btn) btn.textContent = nextTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+      return;
+    }
+
+    // Tabs de navegação
+    const tabBtn = t.closest('.tabBtn');
+    if (tabBtn) {
+      const tabName = tabBtn.dataset.tab;
+      appState.activeTab = tabName;
+      document.querySelectorAll('.tabBtn').forEach(b => {
+        b.classList.remove('border-green-600', 'text-green-600');
+        b.classList.add('border-transparent', 'text-gray-600');
+      });
+      tabBtn.classList.add('border-green-600', 'text-green-600');
+      tabBtn.classList.remove('border-transparent', 'text-gray-600');
+      document.querySelectorAll('.tabContent').forEach(tab => tab.classList.add('hidden'));
+      const tabEl = document.getElementById(tabName + 'Tab');
+      if (tabEl) tabEl.classList.remove('hidden');
+      if (tabName === 'cravings') attachCravingsHandlers(appState, appState.user.id);
+      if (tabName === 'admin') fetchAdminData(true);
+      return;
+    }
+
+    // Botão refresh do admin
+    if (t.closest('#refreshAdminBtn')) {
+      fetchAdminData(true);
+      return;
+    }
+
+    // Estrelas de avaliação
+    const starBtn = t.closest('.starBtn');
+    if (starBtn) {
+      const val = starBtn.dataset.value;
+      const notaInput = document.querySelector('input[name="nota"]');
+      if (notaInput) notaInput.value = val;
+      document.querySelectorAll('.starBtn').forEach(s => {
+        const svg = s.querySelector('svg');
+        if (svg) svg.style.color = s.dataset.value <= val ? '#facc15' : '#d1d5db';
+      });
+      return;
+    }
+
+    // Apagar utilizador (admin)
+    const deleteUserBtn = t.closest('.adminDeleteUserBtn');
+    if (deleteUserBtn) {
+      handleAdminDeleteUser(deleteUserBtn.dataset.id);
+      return;
+    }
+
+    // Apagar avaliação (admin)
+    const deleteAvaliacaoBtn = t.closest('.adminDeleteAvaliacaoBtn');
+    if (deleteAvaliacaoBtn) {
+      handleAdminDeleteAvaliacao(deleteAvaliacaoBtn.dataset.id);
+      return;
+    }
+
+    // Apagar score (admin)
+    const deleteScoreBtn = t.closest('.adminDeleteScoreBtn');
+    if (deleteScoreBtn) {
+      handleAdminDeleteScore(deleteScoreBtn.dataset.id);
+      return;
+    }
+  });
+
+  // ── SUBMITS (formulários) ─────────────────────────────────────────────────
+  app.addEventListener('submit', (e) => {
+    if (e.target.id === 'setupForm') {
+      handleSetupSubmit(e);
+      return;
+    }
+    if (e.target.id === 'avaliacaoForm') {
+      handleAvaliacaoSubmit(e);
+      return;
+    }
+  });
+}
+
+setupAppDelegation();
 initApp();
