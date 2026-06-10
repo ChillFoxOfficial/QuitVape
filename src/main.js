@@ -199,7 +199,7 @@ async function fetchAvaliacoes(userId) {
   try {
     const { data, error } = await supabase
       .from('avaliacoes')
-      .select('id, id_autor, id_alvo, nota, comentario, created_at, autor:user_profiles!avaliacoes_id_autor_fkey(name)')
+      .select('id, id_autor, id_alvo, nota, comentario, created_at, autor:user_profiles(name)')
       .eq('id_alvo', userId)
       .order('created_at', { ascending: false });
 
