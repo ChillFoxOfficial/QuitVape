@@ -643,10 +643,33 @@ async function handleAdminDeleteUser(userId) {
   if (!userId || !appState.isAdmin) return;
   if (!confirm('Apagar este utilizador? Esta ação é irreversível.')) return;
 
-  const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
-  if (error) {
-    alert(error.message);
+  const { error: rpcError } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
+  if (rpcError) {
+    alert(rpcError.message);
     return;
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ target_user_id: userId }),
+      }
+    );
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.warn('Edge Function aviso:', errData.error || response.statusText);
+    }
+  } catch (edgeFnError) {
+    console.warn('Edge Function não disponível:', edgeFnError.message);
   }
 
   await fetchAdminData(false);
