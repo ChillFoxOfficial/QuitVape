@@ -1,4 +1,15 @@
 import { supabase } from '../lib/supabase.js';
+const gameState = {
+  isRunning: false,
+  timeLeft: 60,
+  score: 0,
+  highScore: parseInt(localStorage.getItem('whackAVapeHighScore') || '0'),
+  currentVapeCell: null,
+  timerInterval: null,
+  vapeInterval: null,
+  lastFinishedScore: null,
+  scoreRegistered: false,
+};
 
 export function renderWhackAVape() {
   return `
@@ -211,16 +222,6 @@ function escapeHtml(value) {
 }
 
 export function initWhackAVape() {
-  let gameState = {
-    isRunning: false,
-    timeLeft: 60,
-    score: 0,
-    highScore: parseInt(localStorage.getItem('whackAVapeHighScore') || '0'),
-    currentVapeCell: null,
-    timerInterval: null,
-    lastFinishedScore: null,
-    scoreRegistered: false,
-  };
 
   const startBtn = document.getElementById('startGameBtn');
   const resetBtn = document.getElementById('resetGameBtn');
@@ -244,6 +245,7 @@ export function initWhackAVape() {
   
   refreshLeaderboard();
 
+  window._whackShowVape = showVape;
   function showVape() {
     if (!gameState.isRunning) return;
 
@@ -287,7 +289,7 @@ export function initWhackAVape() {
     updateUI();
 
     showVape();
-    const vapeInterval = setInterval(() => {
+    gameState.vapeInterval = setInterval(() => {
       if (gameState.isRunning) {
         showVape();
       }
@@ -298,15 +300,15 @@ export function initWhackAVape() {
       updateUI();
 
       if (gameState.timeLeft <= 0) {
-        endGame(vapeInterval);
+        endGame();
       }
     }, 1000);
   }
 
-  function endGame(vapeInterval) {
+  function endGame() {
     gameState.isRunning = false;
     clearInterval(gameState.timerInterval);
-    clearInterval(vapeInterval);
+    clearInterval(gameState.vapeInterval);
 
     cells.forEach(cell => {
       cell.querySelector('.vapeEmoji').classList.add('hidden');
@@ -336,65 +338,84 @@ export function initWhackAVape() {
     startBtn.textContent = 'Jogar Novamente';
   }
 
-  startBtn.addEventListener('click', startGame);
-
-  saveScoreBtn?.addEventListener('click', async () => {
-    if (gameState.lastFinishedScore === null || gameState.scoreRegistered) return;
-
-    saveScoreBtn.disabled = true;
-    saveScoreBtn.textContent = 'A registar...';
-
-    try {
-      const entries = await saveRemoteScore(gameState.lastFinishedScore);
-      if (!entries) {
-        throw new Error('Leaderboard indisponivel');
-      }
-
-      refreshLeaderboard(entries);
-
-      gameState.scoreRegistered = true;
-      saveScoreBtn.textContent = 'Pontuação registada';
-      messageFinal.textContent = `${messageFinal.textContent} | Pontuação registada`;
-    } catch (error) {
-      console.error('Error registering Whack-a-Vape score:', error);
-      saveScoreBtn.disabled = false;
-      saveScoreBtn.textContent = 'Tentar novamente';
-      messageFinal.textContent = `${messageFinal.textContent} | Não foi possível registar. Tenta novamente.`;
-    }
-  });
-
-  resetBtn.addEventListener('click', () => {
-    gameState.isRunning = false;
-    if (gameState.timerInterval) clearInterval(gameState.timerInterval);
-    gameState.timeLeft = 60;
-    gameState.score = 0;
-    gameState.currentVapeCell = null;
-    gameState.lastFinishedScore = null;
-    gameState.scoreRegistered = false;
-    gameMessage.classList.add('hidden');
-    saveScoreBtn?.classList.add('hidden');
-    cells.forEach(cell => {
-      cell.querySelector('.vapeEmoji').classList.add('hidden');
-    });
-    updateUI();
-    startBtn.disabled = false;
-    startBtn.textContent = 'Iniciar Jogo';
-  });
-
-  cells.forEach(cell => {
-    cell.addEventListener('click', () => {
-      if (!gameState.isRunning) return;
-
-      const cellIndex = parseInt(cell.dataset.cell, 10);
-      if (cellIndex === gameState.currentVapeCell) {
-        gameState.score++;
-        scoreDisplay.textContent = gameState.score;
-        cell.querySelector('.vapeEmoji').classList.add('hidden');
-        gameState.currentVapeCell = null;
-        showVape();
-      }
-    });
-  });
-
+  // Expor funções no window para o event delegation do main.js
   window.startWhackAVapeGame = startGame;
+  window.resetWhackAVapeGame = resetGame;
+  window.saveWhackAVapeScore = saveScore;
+  window.whackAVapeCellClick = cellClick;
+
+  // Listeners nas células (são muitas e estáticas dentro do jogo — delegation via window)
+  cells.forEach(cell => {
+    cell.addEventListener('click', () => cellClick(parseInt(cell.dataset.cell, 10)));
+  });
+}
+
+function resetGame() {
+  const gameBoard = document.getElementById('gameBoard');
+  const gameMessage = document.getElementById('gameMessage');
+  const saveScoreBtn = document.getElementById('saveScoreBtn');
+  const startBtn = document.getElementById('startGameBtn');
+  const cells = gameBoard ? gameBoard.querySelectorAll('.gameCell') : [];
+
+  gameState.isRunning = false;
+  if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+  if (gameState.vapeInterval) clearInterval(gameState.vapeInterval);
+  gameState.timeLeft = 60;
+  gameState.score = 0;
+  gameState.currentVapeCell = null;
+  gameState.lastFinishedScore = null;
+  gameState.scoreRegistered = false;
+
+  if (gameMessage) gameMessage.classList.add('hidden');
+  if (saveScoreBtn) saveScoreBtn.classList.add('hidden');
+  cells.forEach(cell => {
+    const emoji = cell.querySelector('.vapeEmoji');
+    if (emoji) emoji.classList.add('hidden');
+  });
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const progressBar = document.getElementById('progressBar');
+  if (timerDisplay) timerDisplay.textContent = gameState.timeLeft;
+  if (scoreDisplay) scoreDisplay.textContent = gameState.score;
+  if (progressBar) progressBar.style.width = '100%';
+  if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Iniciar Jogo'; }
+}
+
+async function saveScore() {
+  if (gameState.lastFinishedScore === null || gameState.scoreRegistered) return;
+
+  const saveScoreBtn = document.getElementById('saveScoreBtn');
+  const messageFinal = document.getElementById('messageFinal');
+
+  if (saveScoreBtn) { saveScoreBtn.disabled = true; saveScoreBtn.textContent = 'A registar...'; }
+
+  try {
+    const entries = await saveRemoteScore(gameState.lastFinishedScore);
+    if (!entries) throw new Error('Leaderboard indisponivel');
+
+    refreshLeaderboard(entries);
+    gameState.scoreRegistered = true;
+    if (saveScoreBtn) saveScoreBtn.textContent = 'Pontuação registada ✓';
+    if (messageFinal) messageFinal.textContent = `${messageFinal.textContent} | Pontuação registada`;
+  } catch (error) {
+    console.error('Error registering score:', error);
+    if (saveScoreBtn) { saveScoreBtn.disabled = false; saveScoreBtn.textContent = 'Tentar novamente'; }
+    if (messageFinal) messageFinal.textContent = `${messageFinal.textContent} | Não foi possível registar.`;
+  }
+}
+
+function cellClick(cellIndex) {
+  if (!gameState.isRunning) return;
+  if (cellIndex === gameState.currentVapeCell) {
+    const gameBoard = document.getElementById('gameBoard');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    gameState.score++;
+    if (scoreDisplay) scoreDisplay.textContent = gameState.score;
+    const cell = gameBoard?.querySelector(`[data-cell="${cellIndex}"]`);
+    if (cell) cell.querySelector('.vapeEmoji')?.classList.add('hidden');
+    gameState.currentVapeCell = null;
+    // showVape needs to be called - expose it
+    window._whackShowVape && window._whackShowVape();
+  }
 }
