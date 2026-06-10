@@ -1,22 +1,29 @@
 export function renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes, currentUserId, currentUserEmail) {
   const media = mediaNotas ? mediaNotas.toFixed(1) : '0.0';
-  const jaAvaliou = avaliacoes.some(av => av.id_autor === currentUserId);
+
+  const minhasAvaliacoes = avaliacoes.filter(
+    av => av.id_autor === currentUserId
+  );
+
+  const avaliacoesPublicas = avaliacoes.filter(
+    av => av.id_autor !== currentUserId
+  );
+
+  const jaAvaliou = minhasAvaliacoes.length > 0;
 
   return `
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-8">
       <div class="flex items-center justify-between mb-6">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-slate-100 flex items-center">
-          <svg class="h-5 w-5 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-          </svg>
+        <h3 class="text-xl font-semibold text-gray-800 dark:text-slate-100">
           Avaliações do Website
         </h3>
+
         <button
           id="openAvaliacaoBtn"
           class="${jaAvaliou
             ? 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed'
-            : 'bg-gradient-to-r from-green-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-green-700 hover:to-blue-700 transition-all'}"
-          ${jaAvaliou ? 'disabled title="Já submeteste uma avaliação"' : ''}
+            : 'bg-gradient-to-r from-green-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold'}"
+          ${jaAvaliou ? 'disabled' : ''}
         >
           ${jaAvaliou ? '✓ Já avaliaste' : 'Avaliar Website'}
         </button>
@@ -28,17 +35,35 @@ export function renderAvaliacoesSection(avaliacoes, mediaNotas, totalAvaliacoes,
           <div class="flex items-center justify-center mt-1">
             ${renderStars(parseFloat(media))}
           </div>
-          <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">${totalAvaliacoes} ${totalAvaliacoes === 1 ? 'avaliação' : 'avaliações'}</p>
+          <p class="text-xs text-gray-500 mt-1">
+            ${totalAvaliacoes} ${totalAvaliacoes === 1 ? 'avaliação' : 'avaliações'}
+          </p>
         </div>
       </div>
 
-      ${avaliacoes.length > 0 ? `
-        <div class="space-y-4">
-          ${avaliacoes.map(av => renderAvaliacaoCard(av, currentUserId)).join('')}
-        </div>
-      ` : `
-        <p class="text-gray-500 dark:text-slate-400 text-center py-6">Ainda não existem avaliações. Sê o primeiro a avaliar o website!</p>
-      `}
+      <div class="mb-8">
+        <h4 class="text-lg font-semibold mb-4 text-green-700">
+          O Meu Histórico de Avaliações
+        </h4>
+
+        ${
+          minhasAvaliacoes.length
+            ? minhasAvaliacoes.map(av => renderAvaliacaoCard(av, currentUserId)).join('')
+            : '<p class="text-gray-500">Ainda não submeteste nenhuma avaliação.</p>'
+        }
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">
+          Avaliações da Comunidade
+        </h4>
+
+        ${
+          avaliacoesPublicas.length
+            ? avaliacoesPublicas.map(av => renderAvaliacaoCard(av, currentUserId)).join('')
+            : '<p class="text-gray-500">Sem avaliações de outros utilizadores.</p>'
+        }
+      </div>
     </div>
 
     ${renderAvaliacaoModal(currentUserEmail)}
