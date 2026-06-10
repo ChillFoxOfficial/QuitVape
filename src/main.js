@@ -701,7 +701,7 @@ async function handleSetupSubmit(e) {
 async function handleAvaliacaoSubmit(e) {
   e.preventDefault();
   const form = e.target;
-  const meuEmail = form.alvo_email?.value?.toLowerCase()?.trim() || "";
+  const meuEmail = form.meu_email?.value?.toLowerCase()?.trim() || "";
   const nota = parseInt(form.nota.value);
   const comentario = form.comentario.value.trim();
   const errorDiv = document.getElementById('avaliacaoError');
