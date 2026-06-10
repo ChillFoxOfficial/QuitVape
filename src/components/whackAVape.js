@@ -174,16 +174,21 @@ export async function saveRemoteScore(score) {
   const userId = window.whackAVapeUserId;
   const playerName = window.whackAVapeUserName || 'Jogador';
 
-  const { error } = await supabase
-    .from('whack_scores')
-    .insert([{ user_id: userId, player_name: playerName, score }]);
+  try {
+    const { error } = await supabase
+      .from('whack_scores')
+      .insert([{ user_id: userId, player_name: playerName, score }]);
 
-  if (error) {
-    console.error('Error saving Whack-a-Vape score:', error);
+    if (error) {
+      console.error('Error saving Whack-a-Vape score:', error);
+      return addLocalScoreToLeaderboard(score);
+    }
+
+    return await loadLeaderboard();
+  } catch (e) {
+    console.error('saveRemoteScore threw unexpectedly:', e);
     return addLocalScoreToLeaderboard(score);
   }
-
-  return loadLeaderboard();
 }
 
 export async function refreshLeaderboard(providedEntries = null) {
@@ -395,23 +400,34 @@ function resetGame() {
 async function saveScore() {
   if (gameState.lastFinishedScore === null || gameState.scoreRegistered) return;
 
-  const saveScoreBtn = document.getElementById('saveScoreBtn');
-  const messageFinal = document.getElementById('messageFinal');
-
-  if (saveScoreBtn) { saveScoreBtn.disabled = true; saveScoreBtn.textContent = 'A registar...'; }
+  const saveBtnBefore = document.getElementById('saveScoreBtn');
+  if (saveBtnBefore) { saveBtnBefore.disabled = true; saveBtnBefore.textContent = 'A registar...'; }
 
   try {
-    const entries = await saveRemoteScore(gameState.lastFinishedScore);
-    if (!entries) throw new Error('Leaderboard indisponivel');
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Tempo esgotado. Verifica a ligacao e tenta novamente.')), 10000)
+    );
 
-    refreshLeaderboard(entries);
+    const entries = await Promise.race([
+      saveRemoteScore(gameState.lastFinishedScore),
+      timeout,
+    ]);
+
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const messageFinal  = document.getElementById('messageFinal');
+
+    await refreshLeaderboard(entries || []);
     gameState.scoreRegistered = true;
-    if (saveScoreBtn) saveScoreBtn.textContent = 'Pontuação registada ✓';
-    if (messageFinal) messageFinal.textContent = `${messageFinal.textContent} | Pontuação registada`;
+    if (saveScoreBtn) { saveScoreBtn.disabled = true; saveScoreBtn.textContent = 'Pontuação registada \u2713'; }
+    if (messageFinal) messageFinal.textContent = messageFinal.textContent + ' | Pontuação registada';
   } catch (error) {
     console.error('Error registering score:', error);
+
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const messageFinal  = document.getElementById('messageFinal');
+
     if (saveScoreBtn) { saveScoreBtn.disabled = false; saveScoreBtn.textContent = 'Tentar novamente'; }
-    if (messageFinal) messageFinal.textContent = `${messageFinal.textContent} | Não foi possível registar.`;
+    if (messageFinal) messageFinal.textContent = messageFinal.textContent + ' | Nao foi possivel registar.';
   }
 }
 
