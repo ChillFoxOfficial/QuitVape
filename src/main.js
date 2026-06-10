@@ -84,8 +84,21 @@ async function initApp() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       appState.user = session.user;
-      appState.authMode = isRecovery ? 'reset' : 'login';
-      appState.loading = false;
+      appState.isAdmin = isAdminEmail(session.user?.email);
+      if (isRecovery) {
+        // Modo reset: mostrar formulário de nova password sem carregar dados
+        appState.authMode = 'reset';
+        appState.loading = false;
+        render();
+        return;
+      }
+      // isSignup (verificação de email): carregar perfil existente antes de renderizar
+      // Sem isto, o utilizador via em outro dispositivo teria que reintroduzir os dados.
+      await fetchUserData(session.user.id);
+      await fetchAvaliacoes(session.user.id);
+      await fetchRecentCravings(appState, session.user.id);
+      // Limpar o hash do URL para não voltar a processar no próximo load
+      window.history.replaceState(null, '', window.location.pathname);
       render();
       return;
     }
@@ -111,6 +124,33 @@ async function initApp() {
       appState.authMode = 'reset';
       appState.loading = false;
       render();
+      return;
+    }
+
+    // USER_UPDATED dispara após o utilizador submeter a nova password no ecrã de reset.
+    // Neste caso já temos o perfil em memória (appState.userData), por isso apenas
+    // limpamos o authMode e renderizamos o dashboard sem re-criar o perfil.
+    if (event === 'USER_UPDATED') {
+      appState.user = session?.user || null;
+      appState.isAdmin = isAdminEmail(appState.user?.email);
+      appState.authMode = 'login';
+      // Se já temos os dados do utilizador em memória, não precisamos de refazer fetch
+      // (evita sobrescrever setup_completed ou criar perfil duplicado)
+      if (!appState.userData && appState.user) {
+        await fetchUserData(appState.user.id);
+        await fetchAvaliacoes(appState.user.id);
+        await fetchRecentCravings(appState, appState.user.id);
+      }
+      render();
+      return;
+    }
+
+    // TOKEN_REFRESHED: sessão renovada automaticamente — não recarregar tudo,
+    // apenas actualizar o user no estado (os dados do perfil já estão em memória).
+    if (event === 'TOKEN_REFRESHED') {
+      appState.user = session?.user || null;
+      appState.isAdmin = isAdminEmail(appState.user?.email);
+      // Não chamar render() aqui — evita piscar o ecrã desnecessariamente
       return;
     }
 
