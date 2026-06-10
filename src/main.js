@@ -200,7 +200,6 @@ async function fetchAvaliacoes(userId) {
     const { data, error } = await supabase
       .from('avaliacoes')
       .select('id, id_autor, id_alvo, nota, comentario, created_at')
-      .eq('id_alvo', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -208,7 +207,6 @@ async function fetchAvaliacoes(userId) {
       return;
     }
 
-    // Buscar nomes dos autores separadamente
     const autorIds = [...new Set((data || []).map(av => av.id_autor))];
     let autorNomes = {};
 
@@ -218,7 +216,9 @@ async function fetchAvaliacoes(userId) {
         .select('user_id, name')
         .in('user_id', autorIds);
 
-      (profiles || []).forEach(p => { autorNomes[p.user_id] = p.name; });
+      (profiles || []).forEach(p => {
+        autorNomes[p.user_id] = p.name;
+      });
     }
 
     appState.avaliacoes = (data || []).map(av => ({
