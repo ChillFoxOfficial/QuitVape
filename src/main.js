@@ -622,7 +622,6 @@ async function handleSetupSubmit(e) {
 
     if (error) throw error;
 
-// Atualização do estado local para evitar ecrã branco
     appState.userData = { 
       ...appState.userData, 
       name, 
@@ -665,19 +664,17 @@ async function handleAvaliacaoSubmit(e) {
   };
 
   try {
-    // Validar email
-    const contaEmail = appState.user?.email?.toLowerCase() || '';
     if (!meuEmail.includes('@')) throw new Error('Insere um email válido');
+
+    const contaEmail = appState.user?.email?.toLowerCase() || '';
     if (meuEmail !== contaEmail) throw new Error('O email não corresponde à conta com que entraste');
 
-    const notaInputEl = document.querySelector('#avaliacaoForm input[name="nota"]');
-    const notaFinal = notaInputEl ? parseInt(notaInputEl.value) : nota;
-    if (!notaFinal || notaFinal < 1 || notaFinal > 5) throw new Error('Seleciona uma nota de 1 a 5 estrelas');
+    if (!nota || nota < 1 || nota > 5) throw new Error('Seleciona uma nota de 1 a 5 estrelas');
 
     const { error: insertError } = await supabase.from('avaliacoes').insert([{
       id_autor: appState.user.id,
       id_alvo: appState.user.id,
-      nota: notaFinal,
+      nota,
       comentario,
     }]);
 
@@ -754,18 +751,21 @@ function setupAppDelegation() {
       return;
     }
 
+    // Abrir modal de avaliação
     if (t.closest('#openAvaliacaoBtn')) {
       const modal = document.getElementById('avaliacaoModal');
       if (modal) modal.style.display = 'flex';
       return;
     }
 
+    // Fechar modal de avaliação
     if (t.closest('#closeAvaliacaoModal')) {
       const modal = document.getElementById('avaliacaoModal');
       if (modal) modal.style.display = 'none';
       return;
     }
 
+    // Botão de tema
     if (t.closest('#themeToggleBtn')) {
       const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
       setTheme(nextTheme);
@@ -774,6 +774,7 @@ function setupAppDelegation() {
       return;
     }
 
+    // Tabs de navegação
     const tabBtn = t.closest('.tabBtn');
     if (tabBtn) {
       const tabName = tabBtn.dataset.tab;
@@ -792,45 +793,22 @@ function setupAppDelegation() {
       return;
     }
 
+    // Botão refresh do admin
     if (t.closest('#refreshAdminBtn')) {
       fetchAdminData(true);
-      return;
-    }
-
-    if (t.closest('#startGameBtn')) {
-      window.startWhackAVapeGame && window.startWhackAVapeGame();
-      return;
-    }
-    if (t.closest('#resetGameBtn')) {
-      window.resetWhackAVapeGame && window.resetWhackAVapeGame();
-      return;
-    }
-    if (t.closest('#saveScoreBtn')) {
-      window.saveWhackAVapeScore && window.saveWhackAVapeScore();
-      return;
-    }
-    const gameCell = t.closest('.gameCell');
-    if (gameCell) {
-      window.whackAVapeCellClick && window.whackAVapeCellClick(parseInt(gameCell.dataset.cell, 10));
       return;
     }
 
     // Estrelas de avaliação
     const starBtn = t.closest('.starBtn');
     if (starBtn) {
-      const val = parseInt(starBtn.dataset.value);
-      const notaInput = document.querySelector('#avaliacaoForm input[name="nota"]');
+      const val = starBtn.dataset.value;
+      const notaInput = document.querySelector('input[name="nota"]');
       if (notaInput) notaInput.value = val;
       document.querySelectorAll('.starBtn').forEach(s => {
         const svg = s.querySelector('svg');
-        if (svg) svg.style.color = parseInt(s.dataset.value) <= val ? '#facc15' : '#d1d5db';
+        if (svg) svg.style.color = s.dataset.value <= val ? '#facc15' : '#d1d5db';
       });
-      const notaLabel = document.getElementById('notaLabel');
-      if (notaLabel) {
-        const labels = ['', '1 - Muito mau', '2 - Mau', '3 - Razoável', '4 - Bom', '5 - Excelente'];
-        notaLabel.textContent = labels[val] || 'Seleciona uma nota';
-        notaLabel.style.color = '#16a34a';
-      }
       return;
     }
 
