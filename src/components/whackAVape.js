@@ -175,31 +175,19 @@ export async function saveRemoteScore(score) {
   const playerName = window.whackAVapeUserName || 'Jogador';
 
   try {
-    // Usa fetch direto à REST API em vez do cliente supabase-js para este insert,
-    // pois supabase.from(...).insert(...) pode ficar pendurado indefinidamente
-    // se o lock interno de auth (navigator.locks) ficar preso entre separadores/sessões.
-    // Tenta obter a sessão via supabase-js, com fallback para localStorage
-    // caso getSession() também fique pendurado por causa do lock interno.
+    // Lê a sessão diretamente do localStorage (síncrono, sem locks).
+    // Evita chamar supabase.auth.getSession(), que pode ficar pendurado
+    // indefinidamente se o lock interno de auth (navigator.locks) ficar
+    // preso entre separadores/sessões — e isso bloquearia também
+    // tentativas futuras de refresh de token.
     let session = null;
     try {
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 3000));
-      const result = await Promise.race([sessionPromise, timeoutPromise]);
-      session = result?.data?.session || null;
+      const sbKey = Object.keys(localStorage).find(k => k.includes('-auth-token'));
+      if (sbKey) {
+        session = JSON.parse(localStorage.getItem(sbKey));
+      }
     } catch (e) {
       session = null;
-    }
-
-    if (!session?.access_token) {
-      try {
-        const sbKey = Object.keys(localStorage).find(k => k.includes('-auth-token'));
-        if (sbKey) {
-          const stored = JSON.parse(localStorage.getItem(sbKey));
-          session = stored;
-        }
-      } catch (e) {
-        session = null;
-      }
     }
 
     if (!session?.access_token) {
@@ -210,16 +198,47 @@ export async function saveRemoteScore(score) {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.replace(/\/$/, '');
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    const response = await fetch(`${supabaseUrl}/rest/v1/whack_scores`, {
+    const insertScore = (accessToken) => fetch(`${supabaseUrl}/rest/v1/whack_scores`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': anonKey,
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Prefer': 'return=minimal',
       },
       body: JSON.stringify([{ user_id: userId, player_name: playerName, score }]),
     });
+
+    let response = await insertScore(session.access_token);
+
+    // Token de acesso expirado: tenta renovar com o refresh_token guardado
+    // (pedido fetch direto, sem passar pelo supabase-js / navigator.locks)
+    if (response.status === 401 && session.refresh_token) {
+      try {
+        const refreshResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({ refresh_token: session.refresh_token }),
+        });
+
+        if (refreshResponse.ok) {
+          const refreshed = await refreshResponse.json();
+          if (refreshed?.access_token) {
+            session = { ...session, ...refreshed };
+            const sbKey = Object.keys(localStorage).find(k => k.includes('-auth-token'));
+            if (sbKey) {
+              try { localStorage.setItem(sbKey, JSON.stringify(session)); } catch (e) { /* ignore */ }
+            }
+            response = await insertScore(session.access_token);
+          }
+        }
+      } catch (e) {
+        console.error('Error refreshing session for score save:', e);
+      }
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();
