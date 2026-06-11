@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase.js';
+
+
 const gameState = {
   isRunning: false,
   timeLeft: 60,
@@ -172,16 +174,64 @@ export async function saveRemoteScore(score) {
   const userId = window.whackAVapeUserId;
   const playerName = window.whackAVapeUserName || 'Jogador';
 
-  const { error } = await supabase
-    .from('whack_scores')
-    .insert([{ user_id: userId, player_name: playerName, score }]);
+  try {
+    // Usa fetch direto à REST API em vez do cliente supabase-js para este insert,
+    // pois supabase.from(...).insert(...) pode ficar pendurado indefinidamente
+    // se o lock interno de auth (navigator.locks) ficar preso entre separadores/sessões.
+    // Tenta obter a sessão via supabase-js, com fallback para localStorage
+    // caso getSession() também fique pendurado por causa do lock interno.
+    let session = null;
+    try {
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 3000));
+      const result = await Promise.race([sessionPromise, timeoutPromise]);
+      session = result?.data?.session || null;
+    } catch (e) {
+      session = null;
+    }
 
-  if (error) {
-    console.error('Error saving Whack-a-Vape score:', error);
+    if (!session?.access_token) {
+      try {
+        const sbKey = Object.keys(localStorage).find(k => k.includes('-auth-token'));
+        if (sbKey) {
+          const stored = JSON.parse(localStorage.getItem(sbKey));
+          session = stored;
+        }
+      } catch (e) {
+        session = null;
+      }
+    }
+
+    if (!session?.access_token) {
+      console.error('Sem sessão válida para registar pontuação.');
+      return addLocalScoreToLeaderboard(score);
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.replace(/\/$/, '');
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/whack_scores`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+        'Authorization': `Bearer ${session.access_token}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify([{ user_id: userId, player_name: playerName, score }]),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('Error saving Whack-a-Vape score:', response.status, errorBody);
+      return addLocalScoreToLeaderboard(score);
+    }
+
+    return await loadLeaderboard();
+  } catch (e) {
+    console.error('saveRemoteScore threw unexpectedly:', e);
     return addLocalScoreToLeaderboard(score);
   }
-
-  return loadLeaderboard();
 }
 
 export async function refreshLeaderboard(providedEntries = null) {
@@ -221,7 +271,7 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-export function initWhackAVape() {
+export function initWhackAVape() {  // gameState é agora global (declarado no topo do ficheiro) para sobreviver a render()
 
   const startBtn = document.getElementById('startGameBtn');
   const resetBtn = document.getElementById('resetGameBtn');
@@ -282,10 +332,14 @@ export function initWhackAVape() {
     gameState.currentVapeCell = null;
     gameState.lastFinishedScore = null;
     gameState.scoreRegistered = false;
-    gameMessage.classList.add('hidden');
-    saveScoreBtn?.classList.add('hidden');
-    startBtn.disabled = true;
-    resetBtn.disabled = false;
+    const _gameMessage  = document.getElementById('gameMessage');
+    const _saveScoreBtn = document.getElementById('saveScoreBtn');
+    const _startBtn     = document.getElementById('startGameBtn');
+    const _resetBtn     = document.getElementById('resetGameBtn');
+    if (_gameMessage) _gameMessage.classList.add('hidden');
+    if (_saveScoreBtn) _saveScoreBtn.classList.add('hidden');
+    if (_startBtn) _startBtn.disabled = true;
+    if (_resetBtn) _resetBtn.disabled = false;
     updateUI();
 
     showVape();
@@ -310,41 +364,45 @@ export function initWhackAVape() {
     clearInterval(gameState.timerInterval);
     clearInterval(gameState.vapeInterval);
 
-    cells.forEach(cell => {
-      cell.querySelector('.vapeEmoji').classList.add('hidden');
+    const _gameMessage   = document.getElementById('gameMessage');
+    const _messageText   = document.getElementById('messageText');
+    const _messageFinal  = document.getElementById('messageFinal');
+    const _saveScoreBtn  = document.getElementById('saveScoreBtn');
+    const _startBtn      = document.getElementById('startGameBtn');
+    const _highScore     = document.getElementById('highScoreDisplay');
+    const _cells         = document.querySelectorAll('.gameCell');
+
+    _cells.forEach(cell => {
+      const e = cell.querySelector('.vapeEmoji');
+      if (e) e.classList.add('hidden');
     });
 
     if (gameState.score > gameState.highScore) {
       gameState.highScore = gameState.score;
       localStorage.setItem('whackAVapeHighScore', gameState.highScore);
-      highScoreDisplay.textContent = gameState.highScore;
-      messageText.textContent = '🎉 Novo Recorde!';
-      messageFinal.textContent = `Pontuação: ${gameState.score}`;
+      if (_highScore) _highScore.textContent = gameState.highScore;
+      if (_messageText) _messageText.textContent = '🎉 Novo Recorde!';
+      if (_messageFinal) _messageFinal.textContent = `Pontuação: ${gameState.score}`;
     } else {
-      messageText.textContent = '✅ Sucesso! Desejo Derrotado';
-      messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
+      if (_messageText) _messageText.textContent = '✅ Sucesso! Desejo Derrotado';
+      if (_messageFinal) _messageFinal.textContent = `Pontuação: ${gameState.score} | Melhor: ${gameState.highScore}`;
     }
 
     gameState.lastFinishedScore = gameState.score;
     gameState.scoreRegistered = false;
-    if (saveScoreBtn) {
-      saveScoreBtn.disabled = false;
-      saveScoreBtn.textContent = 'Registar pontuação';
-      saveScoreBtn.classList.remove('hidden');
-    }
 
-    gameMessage.classList.remove('hidden');
-    startBtn.disabled = false;
-    startBtn.textContent = 'Jogar Novamente';
+    if (_saveScoreBtn) {
+      _saveScoreBtn.disabled = false;
+      _saveScoreBtn.textContent = 'Registar pontuação';
+      _saveScoreBtn.classList.remove('hidden');
+    }
+    if (_gameMessage) _gameMessage.classList.remove('hidden');
+    if (_startBtn) { _startBtn.disabled = false; _startBtn.textContent = 'Jogar Novamente'; }
   }
 
-  // Expor funções no window para o event delegation do main.js
-  window.startWhackAVapeGame = startGame;
-  window.resetWhackAVapeGame = resetGame;
-  window.saveWhackAVapeScore = saveScore;
-  window.whackAVapeCellClick = cellClick;
+  window._whackStartGame = startGame;
+  window._whackResetGame = resetGame;
 
-  // Listeners nas células (são muitas e estáticas dentro do jogo — delegation via window)
   cells.forEach(cell => {
     cell.addEventListener('click', () => cellClick(parseInt(cell.dataset.cell, 10)));
   });
@@ -385,23 +443,34 @@ function resetGame() {
 async function saveScore() {
   if (gameState.lastFinishedScore === null || gameState.scoreRegistered) return;
 
-  const saveScoreBtn = document.getElementById('saveScoreBtn');
-  const messageFinal = document.getElementById('messageFinal');
-
-  if (saveScoreBtn) { saveScoreBtn.disabled = true; saveScoreBtn.textContent = 'A registar...'; }
+  const saveBtnBefore = document.getElementById('saveScoreBtn');
+  if (saveBtnBefore) { saveBtnBefore.disabled = true; saveBtnBefore.textContent = 'A registar...'; }
 
   try {
-    const entries = await saveRemoteScore(gameState.lastFinishedScore);
-    if (!entries) throw new Error('Leaderboard indisponivel');
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Tempo esgotado. Verifica a ligacao e tenta novamente.')), 10000)
+    );
 
-    refreshLeaderboard(entries);
+    const entries = await Promise.race([
+      saveRemoteScore(gameState.lastFinishedScore),
+      timeout,
+    ]);
+
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const messageFinal  = document.getElementById('messageFinal');
+
+    await refreshLeaderboard(entries || []);
     gameState.scoreRegistered = true;
-    if (saveScoreBtn) saveScoreBtn.textContent = 'Pontuação registada ✓';
-    if (messageFinal) messageFinal.textContent = `${messageFinal.textContent} | Pontuação registada`;
+    if (saveScoreBtn) { saveScoreBtn.disabled = true; saveScoreBtn.textContent = 'Pontuação registada \u2713'; }
+    if (messageFinal) messageFinal.textContent = messageFinal.textContent + ' | Pontuação registada';
   } catch (error) {
     console.error('Error registering score:', error);
+
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const messageFinal  = document.getElementById('messageFinal');
+
     if (saveScoreBtn) { saveScoreBtn.disabled = false; saveScoreBtn.textContent = 'Tentar novamente'; }
-    if (messageFinal) messageFinal.textContent = `${messageFinal.textContent} | Não foi possível registar.`;
+    if (messageFinal) messageFinal.textContent = messageFinal.textContent + ' | Nao foi possivel registar.';
   }
 }
 
@@ -415,7 +484,10 @@ function cellClick(cellIndex) {
     const cell = gameBoard?.querySelector(`[data-cell="${cellIndex}"]`);
     if (cell) cell.querySelector('.vapeEmoji')?.classList.add('hidden');
     gameState.currentVapeCell = null;
-    // showVape needs to be called - expose it
     window._whackShowVape && window._whackShowVape();
   }
 }
+window.startWhackAVapeGame  = () => { const f = window._whackStartGame;  if (f) f(); };
+window.resetWhackAVapeGame  = () => { const f = window._whackResetGame;  if (f) f(); };
+window.saveWhackAVapeScore  = saveScore;
+window.whackAVapeCellClick  = cellClick;

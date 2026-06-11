@@ -622,6 +622,7 @@ async function handleSetupSubmit(e) {
 
     if (error) throw error;
 
+// Atualização do estado local para evitar ecrã branco
     appState.userData = { 
       ...appState.userData, 
       name, 
@@ -664,17 +665,19 @@ async function handleAvaliacaoSubmit(e) {
   };
 
   try {
-    if (!meuEmail.includes('@')) throw new Error('Insere um email válido');
-
+    // Validar email
     const contaEmail = appState.user?.email?.toLowerCase() || '';
+    if (!meuEmail.includes('@')) throw new Error('Insere um email válido');
     if (meuEmail !== contaEmail) throw new Error('O email não corresponde à conta com que entraste');
 
-    if (!nota || nota < 1 || nota > 5) throw new Error('Seleciona uma nota de 1 a 5 estrelas');
+    const notaInputEl = document.querySelector('#avaliacaoForm input[name="nota"]');
+    const notaFinal = notaInputEl ? parseInt(notaInputEl.value) : nota;
+    if (!notaFinal || notaFinal < 1 || notaFinal > 5) throw new Error('Seleciona uma nota de 1 a 5 estrelas');
 
     const { error: insertError } = await supabase.from('avaliacoes').insert([{
       id_autor: appState.user.id,
       id_alvo: appState.user.id,
-      nota,
+      nota: notaFinal,
       comentario,
     }]);
 
@@ -691,6 +694,25 @@ async function handleAvaliacaoSubmit(e) {
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
+}
+
+async function handleDeleteMinhaAvaliacao(avaliacaoId) {
+  if (!avaliacaoId || !appState.user) return;
+  if (!confirm('Eliminar a tua avaliação?')) return;
+
+  const { error } = await supabase
+    .from('avaliacoes')
+    .delete()
+    .eq('id', avaliacaoId)
+    .eq('id_autor', appState.user.id); // garantia extra: só apaga a sua
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await fetchAvaliacoes(appState.user.id);
+  render();
 }
 let _logoutInProgress = false;
 
@@ -799,16 +821,44 @@ function setupAppDelegation() {
       return;
     }
 
+    // ── Whack-a-Vape ─────────────────────────────────────────────────────────
+    if (t.closest('#startGameBtn')) {
+      window.startWhackAVapeGame && window.startWhackAVapeGame();
+      return;
+    }
+    if (t.closest('#resetGameBtn')) {
+      window.resetWhackAVapeGame && window.resetWhackAVapeGame();
+      return;
+    }
+    if (t.closest('#saveScoreBtn')) {
+      window.saveWhackAVapeScore && window.saveWhackAVapeScore();
+      return;
+    }
+    // Células do jogo
+    const gameCell = t.closest('.gameCell');
+    if (gameCell) {
+      window.whackAVapeCellClick && window.whackAVapeCellClick(parseInt(gameCell.dataset.cell, 10));
+      return;
+    }
+
     // Estrelas de avaliação
     const starBtn = t.closest('.starBtn');
     if (starBtn) {
-      const val = starBtn.dataset.value;
-      const notaInput = document.querySelector('input[name="nota"]');
+      const val = parseInt(starBtn.dataset.value);
+      // Atualizar o input hidden com a nota escolhida
+      const notaInput = document.querySelector('#avaliacaoForm input[name="nota"]');
       if (notaInput) notaInput.value = val;
       document.querySelectorAll('.starBtn').forEach(s => {
         const svg = s.querySelector('svg');
-        if (svg) svg.style.color = s.dataset.value <= val ? '#facc15' : '#d1d5db';
+        if (svg) svg.style.color = parseInt(s.dataset.value) <= val ? '#facc15' : '#d1d5db';
       });
+      // Atualizar o label de nota
+      const notaLabel = document.getElementById('notaLabel');
+      if (notaLabel) {
+        const labels = ['', '1 - Muito mau', '2 - Mau', '3 - Razoável', '4 - Bom', '5 - Excelente'];
+        notaLabel.textContent = labels[val] || 'Seleciona uma nota';
+        notaLabel.style.color = '#16a34a';
+      }
       return;
     }
 
@@ -823,6 +873,13 @@ function setupAppDelegation() {
     const deleteAvaliacaoBtn = t.closest('.adminDeleteAvaliacaoBtn');
     if (deleteAvaliacaoBtn) {
       handleAdminDeleteAvaliacao(deleteAvaliacaoBtn.dataset.id);
+      return;
+    }
+
+    // Apagar a própria avaliação (utilizador comum)
+    const deleteMinhaBtn = t.closest('.deleteAvaliacaoBtn');
+    if (deleteMinhaBtn) {
+      handleDeleteMinhaAvaliacao(deleteMinhaBtn.dataset.id);
       return;
     }
 
