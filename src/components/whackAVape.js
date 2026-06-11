@@ -284,15 +284,25 @@ export function initWhackAVape() {  // gameState é agora global (declarado no t
   const scoreDisplay = document.getElementById('scoreDisplay');
   const highScoreDisplay = document.getElementById('highScoreDisplay');
   const progressBar = document.getElementById('progressBar');
-  const cells = document.querySelectorAll('.gameCell');
 
   if (!startBtn || !resetBtn || !gameBoard || !timerDisplay || !scoreDisplay || !highScoreDisplay || !progressBar) {
     return;
   }
 
-  resetBtn.disabled = true;
+  // Evita registar listeners diretos duplicados nas células em cada render.
+  // O clique é tratado via delegação em main.js (window.whackAVapeCellClick).
+
+  // Sincroniza o estado dos botões com o estado atual do jogo
+  // (importante após um re-render enquanto o jogo está a decorrer).
+  if (gameState.isRunning) {
+    startBtn.disabled = true;
+    resetBtn.disabled = false;
+  } else {
+    startBtn.disabled = false;
+    resetBtn.disabled = true;
+  }
   highScoreDisplay.textContent = gameState.highScore;
-  
+
   refreshLeaderboard();
 
   window._whackShowVape = showVape;
@@ -325,7 +335,17 @@ export function initWhackAVape() {  // gameState é agora global (declarado no t
     progressBar.style.width = progressPercent + '%';
   }
 
+  // Restaura o estado visual se o jogo já estava a decorrer (re-render)
+  updateUI();
+  if (gameState.isRunning && gameState.currentVapeCell !== null) {
+    const cell = gameBoard.querySelector(`[data-cell="${gameState.currentVapeCell}"]`);
+    const emoji = cell?.querySelector('.vapeEmoji');
+    if (emoji) emoji.classList.remove('hidden');
+  }
+
   function startGame() {
+    if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+    if (gameState.vapeInterval) clearInterval(gameState.vapeInterval);
     gameState.isRunning = true;
     gameState.timeLeft = 60;
     gameState.score = 0;
@@ -402,10 +422,6 @@ export function initWhackAVape() {  // gameState é agora global (declarado no t
 
   window._whackStartGame = startGame;
   window._whackResetGame = resetGame;
-
-  cells.forEach(cell => {
-    cell.addEventListener('click', () => cellClick(parseInt(cell.dataset.cell, 10)));
-  });
 }
 
 function resetGame() {
